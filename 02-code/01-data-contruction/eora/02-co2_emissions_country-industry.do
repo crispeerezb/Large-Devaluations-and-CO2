@@ -49,9 +49,9 @@ foreach year of numlist `start_year'/`end_year' {
 	g       type = "A" in 10/64
 	replace type = "B" in 65/119
 	replace type = "A_SCOPE_1" in 10/64
-	replace type = "A_SCOPE_2" in 10/11
+	replace type = "A_SCOPE_2" in 10/11 // Public electricity and heat production - Other Energy Industries
 	replace type = "B_SCOPE_1" in 65/119
-	replace type = "B_SCOPE_2" in 65/66
+	replace type = "B_SCOPE_2" in 65/66 // Public electricity and heat production - Other Energy Industries
 
 	drop if type == ""
 

@@ -219,7 +219,3 @@ sort country country_code year industry
 
 * We save data
 save "${output}/data-stata/eora/01-gross_output_country-industry.dta"
-
-* We save data with output by country
-collapse (sum) grossoutput, by(country year)
-save "${output}/data-stata/eora/02-gross_output_country.dta" // TODO: CHECK I GOT DIFFERENT RESULT

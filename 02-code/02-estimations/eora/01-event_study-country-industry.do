@@ -52,8 +52,8 @@ merge 1:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt
 /*---------------SET GLOBALS FOR PROGRAM---------------*/
 global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
-global monthsafter="7" /*Set Years after Devaluation*/
-global monthsbefore="3"/*Set Lags*/
+global monthsafter="4" /*Set Years after Devaluation*/
+global monthsbefore="4"/*Set Lags*/
 global outcome1="ln_energy_cost_share" /*Set outcome scope1_eora or scope12_eora*/
 global timevar="year" 
 global productvar="countrycode"
@@ -110,7 +110,8 @@ char CMonth[omit] 49
 global ytitle="Log Energy rate"
 
 *Main regression
-xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+*xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore
@@ -125,21 +126,10 @@ replace time = -1 in `=r(N) + 1 '
 foreach x in estimate stderr t p min95 max95{
 replace `x'=0 if time==-1
 }
-
-/*
+keep if estimate<1 & estimate>-1
 sort time
-twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(order(1 "Point estimate" 2 "95% confidence interval"))
-graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
-*/
+twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
 
-sort time
+*graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
 
-twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) ///
-(rcap min95 max95 time , lcolor(gs10) ), ///
-xline(-1, lpattern(dash) lcolor(black)) ///
-yline(0) ///
-xtitle("Years since Large Devaluation") ///
-ytitle($ytitle) ///
-xlabel(-$monthsbefore(1)$monthsafter) ///
-ylabel(-1(1)3) /// Aquí se ha añadido la opción ylabel para definir el rango de -1 a 3.
-legend(order(1 "Point estimate" 2 "95% confidence interval"))
+

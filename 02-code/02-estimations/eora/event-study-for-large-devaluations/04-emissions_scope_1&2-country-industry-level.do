@@ -1,9 +1,9 @@
 /*
-********************************************************************
-********************************************************************
-THIS CODE ESTIMATE EVENT STUDY FOR ENERGY COST-SHARE (COUNTRY LEVEL)
-********************************************************************
-********************************************************************
+************************************************************
+************************************************************
+THIS CODE ESTIMATE EVENT STUDY FOR EMISSIONS BY COUNTRY LEVEL
+*************************************************************
+*************************************************************
 */
 
 
@@ -31,20 +31,21 @@ global output "${dir_base}\04-output"
 
 
 *** load data set ***
-use "${output}\data-stata\eora\04-electricity-spending.dta", clear
+use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
+merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
-*** We collapse data to have data country-year level
-collapse (sum) energy_spending grossoutput, by(country country_code year)
+
+*** gen scope 1 and 2 rates
+gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
+gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
 
 *** Generate grossoutput variable lagged
 sort country year
 gen grossoutput_ly=grossoutput[_n-1] if country==country[_n-1] & year==year[_n-1]+1
 
 ** Add data from penn table ***
-merge 1:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
+merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
 
-** Just to keep things in order
-keep country country_code year energy_spending grossoutput grossoutput_ly lrgdpo
 
 /*-------------------------------------------------------*/
 /*-----------------------PRELIMINARIES-------------------*/
@@ -55,9 +56,11 @@ global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
 global monthsafter="4" /*Set Years after Devaluation*/
 global monthsbefore="4"/*Set Lags*/
-global outcome1="ln_energy_cost_share" /*Set outcome scope1_eora or scope12_eora*/
+global outcome1="ln_co2_scope1_rate" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
+global productvar1 = "industry_code"
+global productvar2 = "countryXindustry_code"
 global controls="lrgdpo" /*If want to add controls*/
 
 * Generate event for large devaluations
@@ -74,14 +77,13 @@ replace Event=1 if country_code=="KOR" & year==1998
 replace Event=1 if country_code=="TUR" & year==1994
 replace Event=1 if country_code=="TUR" & year==2001
 replace Event=1 if country_code=="BRA" & year==1999
-*replace Event=1 if country_code=="IND" & year==1991
-*replace Event=1 if country_code=="COL" & year==2014
-
-* Generate outcomes in log
-gen ln_energy_cost_share=ln(energy_spending/grossoutput)
+replace Event=1 if country_code=="IND" & year==1991
+replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
-encode country,gen(countrycode)
+encode country, gen(countrycode)
+encode industry, gen(industry_code)
+encode countryXindustry, gen(countryXindustry_code)
 
 * Variable for false event:
 gen uniform=runiform()
@@ -91,6 +93,7 @@ replace Tfalse=1 if uniform>=0.80
 sort country year
 
 * Indicator counting years since large devaluations
+
 by country: gen target=year if $eventvar==1
 egen td=min(target), by(country)
 *CMonth will count years since devaluation.
@@ -107,11 +110,11 @@ replace CMonth=CMonth+50
 char CMonth[omit] 49
 
 ****Regressions
-global ytitle="Log Cost Energy rate"
+global ytitle="Log emissions scope 1 rate"
 
 *Main regression
 *xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore

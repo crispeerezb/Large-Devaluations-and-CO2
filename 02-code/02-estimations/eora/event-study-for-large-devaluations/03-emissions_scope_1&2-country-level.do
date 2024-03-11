@@ -1,9 +1,9 @@
 /*
-*****************************
-*****************************
-THIS CODE ESTIMATE EVENT STUDY
-******************************
-******************************
+************************************************************
+************************************************************
+THIS CODE ESTIMATE EVENT STUDY FOR EMISSIONS BY COUNTRY LEVEL
+*************************************************************
+*************************************************************
 */
 
 
@@ -31,11 +31,15 @@ global output "${dir_base}\04-output"
 
 
 *** load data set ***
-use "${output}\data-stata\eora\04-electricity-spending.dta", clear
-
+use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
+merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
 *** We collapse data to have data country-year level
-collapse (sum) energy_spending grossoutput, by(country country_code year)
+collapse (sum) co2_scope1 co2_scope2 grossoutput, by(country country_code year)
+
+*** gen scope 1 and 2 rates
+gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
+gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
 
 *** Generate grossoutput variable lagged
 sort country year
@@ -54,7 +58,7 @@ global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
 global monthsafter="4" /*Set Years after Devaluation*/
 global monthsbefore="4"/*Set Lags*/
-global outcome1="ln_energy_cost_share" /*Set outcome scope1_eora or scope12_eora*/
+global outcome1="ln_co2_scope1_rate" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
 global controls="lrgdpo" /*If want to add controls*/
@@ -73,11 +77,8 @@ replace Event=1 if country_code=="KOR" & year==1998
 replace Event=1 if country_code=="TUR" & year==1994
 replace Event=1 if country_code=="TUR" & year==2001
 replace Event=1 if country_code=="BRA" & year==1999
-*replace Event=1 if country_code=="IND" & year==1991
-*replace Event=1 if country_code=="COL" & year==2014
-
-* Generate outcomes in log
-gen ln_energy_cost_share=ln(energy_spending/grossoutput)
+replace Event=1 if country_code=="IND" & year==1991
+replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
 encode country,gen(countrycode)

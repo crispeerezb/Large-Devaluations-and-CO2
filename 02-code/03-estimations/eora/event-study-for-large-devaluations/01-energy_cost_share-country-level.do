@@ -28,6 +28,7 @@ global wd "${dir_base}\01-code"
 global dir_temp "${dir_base}\03-temp"
 global dir_source "C:\Users\crist\Dropbox Dropbox\Cristóbal Pérez Barraza\A-Large Devaluations and CO2\DataRaw" // note this one is not in the repository
 global output "${dir_base}\04-output"
+global results "${dir_base}\05-results"
 
 
 *** load data set ***
@@ -107,7 +108,7 @@ replace CMonth=CMonth+50
 char CMonth[omit] 49
 
 ****Regressions
-global ytitle="Log Cost Energy rate"
+global ytitle="Log Cost Energy Rate"
 
 *Main regression
 *xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
@@ -130,6 +131,7 @@ keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
 
-*graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
+graph export "${results}\eora\event-study-for-large-devaluations\01-energy_cost_share_country.pdf", as(pdf) replace
+
 
 

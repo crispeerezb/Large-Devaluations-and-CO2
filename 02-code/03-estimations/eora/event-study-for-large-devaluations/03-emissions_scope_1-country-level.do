@@ -28,23 +28,25 @@ global wd "${dir_base}\01-code"
 global dir_temp "${dir_base}\03-temp"
 global dir_source "C:\Users\crist\Dropbox Dropbox\Cristóbal Pérez Barraza\A-Large Devaluations and CO2\DataRaw" // note this one is not in the repository
 global output "${dir_base}\04-output"
+global results "${dir_base}\05-results"
 
 
 *** load data set ***
 use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
 merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
+*** We collapse data to have data country-year level
+collapse (sum) co2_scope1 co2_scope2 grossoutput, by(country country_code year)
 
 *** gen scope 1 and 2 rates
 gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
-gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
 
 *** Generate grossoutput variable lagged
 sort country year
 gen grossoutput_ly=grossoutput[_n-1] if country==country[_n-1] & year==year[_n-1]+1
 
 ** Add data from penn table ***
-merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
+merge 1:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
 
 
 /*-------------------------------------------------------*/
@@ -59,8 +61,6 @@ global monthsbefore="4"/*Set Lags*/
 global outcome1="ln_co2_scope1_rate" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
-global productvar1 = "industry_code"
-global productvar2 = "countryXindustry_code"
 global controls="lrgdpo" /*If want to add controls*/
 
 * Generate event for large devaluations
@@ -81,9 +81,7 @@ replace Event=1 if country_code=="IND" & year==1991
 replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
-encode country, gen(countrycode)
-encode industry, gen(industry_code)
-encode countryXindustry, gen(countryXindustry_code)
+encode country,gen(countrycode)
 
 * Variable for false event:
 gen uniform=runiform()
@@ -110,11 +108,11 @@ replace CMonth=CMonth+50
 char CMonth[omit] 49
 
 ****Regressions
-global ytitle="Log emissions scope 1 rate"
+global ytitle="Log Scope 1 Emissions Rate"
 
 *Main regression
 *xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
+xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore
@@ -132,6 +130,8 @@ replace `x'=0 if time==-1
 keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
+
+graph export "${results}\eora\event-study-for-large-devaluations\03-scope1_country.pdf", as(pdf) replace
 
 *graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
 

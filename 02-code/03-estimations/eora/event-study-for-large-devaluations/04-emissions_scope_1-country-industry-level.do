@@ -1,9 +1,9 @@
 /*
-*****************************************************************************
-*****************************************************************************
-THIS CODE ESTIMATE EVENT STUDY FOR ENERGY COST_SHARE (COUNTRY-INDUSTRY LEVEL)
-*****************************************************************************
-*****************************************************************************
+************************************************************
+************************************************************
+THIS CODE ESTIMATE EVENT STUDY FOR EMISSIONS BY COUNTRY LEVEL
+*************************************************************
+*************************************************************
 */
 
 
@@ -31,18 +31,22 @@ global output "${dir_base}\04-output"
 global results "${dir_base}\05-results"
 
 
-*** load data set where we have electricity spending by country-industry level ***
-use "${output}\data-stata\eora\04-electricity-spending.dta", clear
+*** load data set ***
+use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
+merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
-*** Generate outcome variable ***
-gen ln_energy_cost_share = ln(energy_cost_share)
+
+*** gen scope 1 and 2 rates
+gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
+gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
 
 *** Generate grossoutput variable lagged
 sort country year
 gen grossoutput_ly=grossoutput[_n-1] if country==country[_n-1] & year==year[_n-1]+1
 
-** Add data from penn table (many-to-one, because master have many times country) ***
+** Add data from penn table ***
 merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
+
 
 /*-------------------------------------------------------*/
 /*-----------------------PRELIMINARIES-------------------*/
@@ -52,11 +56,11 @@ merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt
 global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
 global monthsafter="4" /*Set Years after Devaluation*/
-global monthsbefore="4"/*Set Years Lags*/
-global outcome1="ln_energy_cost_share" /*Set outcome scope1_eora or scope12_eora*/
+global monthsbefore="4"/*Set Lags*/
+global outcome1="ln_co2_scope1_rate" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
-global productvar1="industry_code"
+global productvar1 = "industry_code"
 global productvar2 = "countryXindustry_code"
 global controls="lrgdpo" /*If want to add controls*/
 
@@ -74,12 +78,12 @@ replace Event=1 if country_code=="KOR" & year==1998
 replace Event=1 if country_code=="TUR" & year==1994
 replace Event=1 if country_code=="TUR" & year==2001
 replace Event=1 if country_code=="BRA" & year==1999
-*replace Event=1 if country_code=="IND" & year==1991
-*replace Event=1 if country_code=="COL" & year==2014
+replace Event=1 if country_code=="IND" & year==1991
+replace Event=1 if country_code=="COL" & year==2014
 
-* Set a code for reg
-encode industry ,gen(industry_code)
-encode country,gen(countrycode)
+* Set a code for each country.
+encode country, gen(countrycode)
+encode industry, gen(industry_code)
 encode countryXindustry, gen(countryXindustry_code)
 
 * Variable for false event:
@@ -87,7 +91,7 @@ gen uniform=runiform()
 gen Tfalse=0
 replace Tfalse=1 if uniform>=0.80
 
-sort country countryXindustry year
+sort country year
 
 * Indicator counting years since large devaluations
 
@@ -107,11 +111,11 @@ replace CMonth=CMonth+50
 char CMonth[omit] 49
 
 ****Regressions
-global ytitle="Log Cost Energy Rate"
+global ytitle="Log emissions scope 1 rate"
 
 *Main regression
-xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar $productvar1) cluster($productvar2)
-*xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar)
+*xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore
@@ -130,6 +134,8 @@ keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
 
+graph export "${results}\eora\event-study-for-large-devaluations\04-scope1_country-industry.pdf", as(pdf) replace
 
-graph export "${results}\eora\event-study-for-large-devaluations\02-energy_cost_share_country-industry.pdf", as(pdf) replace
+*graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
+
 

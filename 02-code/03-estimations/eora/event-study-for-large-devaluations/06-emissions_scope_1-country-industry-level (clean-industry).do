@@ -34,19 +34,51 @@ global output "${dir_base}\04-output"
 use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
 merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
-*** We collapse data to have data country-year level
-collapse (sum) co2_scope1 co2_scope2 grossoutput, by(country country_code year)
 
-*** gen scope 1 and 2 rates
-gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
-gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
+*** gen scope 1+2 *** 
+gen co2_scope1_2 = co2_scope1 + co2_scope2
+gen co2_scope1_2_rates = co2_scope1_2/grossoutput
+
+*** gen total industry emissions ***
+bysort industry: egen total_emissions = total(co2_scope1_2_rates)
+
+summarize total_emissions, detail
+
+/*
+
+                       total_emissions
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%     10915.34       1.539609
+ 5%     11209.97       1.539609
+10%     11355.03       1.539609       Obs             132,705
+25%     12254.77       1.539609       Sum of wgt.     132,705
+
+50%     14247.46                      Mean           43842.13
+                        Largest       Std. dev.      106666.6
+75%     19798.46       551511.4
+90%     52896.55       551511.4       Variance       1.14e+10
+95%     181864.5       551511.4       Skewness       4.211283
+99%     551511.4       551511.4       Kurtosis       19.84406
+
+*/
+
+* Classify dirties and clean industries
+gen dirty = 0
+replace dirty = 1 if total_emissions > 19798.46
+
+* Only keep dirties industries
+keep if dirty == 1
+
+* gen outcome variable *
+gen ln_co2_rates_scope1 = log(co2_rates_scope1)
 
 *** Generate grossoutput variable lagged
 sort country year
 gen grossoutput_ly=grossoutput[_n-1] if country==country[_n-1] & year==year[_n-1]+1
 
 ** Add data from penn table ***
-merge 1:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
+merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
 
 
 /*-------------------------------------------------------*/
@@ -58,9 +90,11 @@ global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
 global monthsafter="4" /*Set Years after Devaluation*/
 global monthsbefore="4"/*Set Lags*/
-global outcome1="ln_co2_scope1_rate" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
+global outcome1="ln_co2_rates_scope1" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
+global productvar1 = "industry_code"
+global productvar2 = "countryXindustry_code"
 global controls="lrgdpo" /*If want to add controls*/
 
 * Generate event for large devaluations
@@ -81,7 +115,9 @@ replace Event=1 if country_code=="IND" & year==1991
 replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
-encode country,gen(countrycode)
+encode country, gen(countrycode)
+encode industry, gen(industry_code)
+encode countryXindustry, gen(countryXindustry_code)
 
 * Variable for false event:
 gen uniform=runiform()
@@ -108,11 +144,11 @@ replace CMonth=CMonth+50
 char CMonth[omit] 49
 
 ****Regressions
-global ytitle="Log Energy rate"
+global ytitle="Log emissions scope 1 rate"
 
 *Main regression
 *xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore

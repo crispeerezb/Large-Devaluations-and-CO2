@@ -28,47 +28,71 @@ global wd "${dir_base}\01-code"
 global dir_temp "${dir_base}\03-temp"
 global dir_source "C:\Users\crist\Dropbox Dropbox\Cristóbal Pérez Barraza\A-Large Devaluations and CO2\DataRaw" // note this one is not in the repository
 global output "${dir_base}\04-output"
-
+global results "${dir_base}\05-results"
 
 *** load data set ***
 use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
 merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
 
-*** gen scope 1+2 *** 
-gen co2_scope1_2 = co2_scope1 + co2_scope2
-gen co2_scope1_2_rates = co2_scope1_2/grossoutput
-
-*** gen total industry emissions ***
-bysort industry: egen total_emissions = total(co2_scope1_2_rates)
-
-summarize total_emissions, detail
+*** define clean and dirty industry ***
+preserve
+collapse (sum) grossoutput co2_scope1, by(industry)
+gen co2_scope1_rate = co2_scope1/grossoutput
+drop if industry == "Total"
+summarize co2_scope1_rate, detail
 
 /*
-
-                       total_emissions
+                       co2_scope1_rate
 -------------------------------------------------------------
       Percentiles      Smallest
- 1%     10915.34       1.539609
- 5%     11209.97       1.539609
-10%     11355.03       1.539609       Obs             132,705
-25%     12254.77       1.539609       Sum of wgt.     132,705
+ 1%            0              0
+ 5%     .0152596       .0152596
+10%     .0199556       .0199556       Obs                  26
+25%     .0248907       .0212821       Sum of wgt.          26
 
-50%     14247.46                      Mean           43842.13
-                        Largest       Std. dev.      106666.6
-75%     19798.46       551511.4
-90%     52896.55       551511.4       Variance       1.14e+10
-95%     181864.5       551511.4       Skewness       4.211283
-99%     551511.4       551511.4       Kurtosis       19.84406
+50%     .0703486                      Mean           .2773015
+                        Largest       Std. dev.      .7824481
+75%      .121782       .2505798
+90%     .4387235       .4387235       Variance        .612225
+95%      1.17288        1.17288       Skewness       4.233195
+99%     3.942306       3.942306       Kurtosis       20.10261
 
 */
 
-* Classify dirties and clean industries
-gen dirty = 0
-replace dirty = 1 if total_emissions > 19798.46
+restore
 
-* Only keep dirties industries
-keep if dirty == 1
+egen co2_scope1_total_industry = total(co2_scope1), by(industry)
+egen grossoutput_total_industry = total(grossoutput), by(industry)
+
+gen scope1_rate_aux = co2_scope1_total_industry/grossoutput_total_industry
+
+gen clean_industry = 0
+replace clean_industry = 1 if scope1_rate_aux <= 0.0248907
+
+gen dirty_industry = 0
+replace dirty_industry = 1 if scope1_rate_aux >= 0.121782
+
+keep if dirty_industry == 1
+
+/*
+
+
+                               industry |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+             Electricity, Gas and Water |      5,103       14.29       14.29
+                         Metal Products |      5,103       14.29       28.57
+                   Mining and Quarrying |      5,103       14.29       42.86
+Petroleum, Chemical and Non-Metallic .. |      5,103       14.29       57.14
+                              Recycling |      5,103       14.29       71.43
+           Textiles and Wearing Apparel |      5,103       14.29       85.71
+                              Transport |      5,103       14.29      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     35,721      100.00
+
+
+
+*/
 
 * gen outcome variable *
 gen ln_co2_rates_scope1 = log(co2_rates_scope1)
@@ -166,6 +190,9 @@ replace `x'=0 if time==-1
 keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
+
+graph export "${results}\eora\event-study-for-large-devaluations\06-scope1_country-industry (dirty_industry).pdf", as(pdf) replace
+
 
 *graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
 

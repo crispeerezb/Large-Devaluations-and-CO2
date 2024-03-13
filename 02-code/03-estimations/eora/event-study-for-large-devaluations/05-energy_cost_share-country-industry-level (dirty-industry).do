@@ -28,10 +28,73 @@ global wd "${dir_base}\01-code"
 global dir_temp "${dir_base}\03-temp"
 global dir_source "C:\Users\crist\Dropbox Dropbox\Cristóbal Pérez Barraza\A-Large Devaluations and CO2\DataRaw" // note this one is not in the repository
 global output "${dir_base}\04-output"
+global results "${dir_base}\05-results"
 
 
-*** load data set where we have electricity spending by country-industry level ***
+*** load data set ***
 use "${output}\data-stata\eora\04-electricity-spending.dta", clear
+
+merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
+
+
+*** define clean and dirty industry ***
+preserve
+collapse (sum) grossoutput co2_scope1, by(industry)
+gen co2_scope1_rate = co2_scope1/grossoutput
+drop if industry == "Total"
+summarize co2_scope1_rate, detail
+
+/*
+                       co2_scope1_rate
+-------------------------------------------------------------
+      Percentiles      Smallest
+ 1%            0              0
+ 5%     .0152596       .0152596
+10%     .0199556       .0199556       Obs                  26
+25%     .0248907       .0212821       Sum of wgt.          26
+
+50%     .0703486                      Mean           .2773015
+                        Largest       Std. dev.      .7824481
+75%      .121782       .2505798
+90%     .4387235       .4387235       Variance        .612225
+95%      1.17288        1.17288       Skewness       4.233195
+99%     3.942306       3.942306       Kurtosis       20.10261
+
+*/
+
+restore
+
+egen co2_scope1_total_industry = total(co2_scope1), by(industry)
+egen grossoutput_total_industry = total(grossoutput), by(industry)
+
+gen scope1_rate_aux = co2_scope1_total_industry/grossoutput_total_industry
+
+gen clean_industry = 0
+replace clean_industry = 1 if scope1_rate_aux <= 0.0248907
+
+gen dirty_industry = 0
+replace dirty_industry = 1 if scope1_rate_aux >= 0.121782
+
+keep if dirty_industry == 1
+
+/*
+
+
+                               industry |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+             Electricity, Gas and Water |      5,103       14.29       14.29
+                         Metal Products |      5,103       14.29       28.57
+                   Mining and Quarrying |      5,103       14.29       42.86
+Petroleum, Chemical and Non-Metallic .. |      5,103       14.29       57.14
+                              Recycling |      5,103       14.29       71.43
+           Textiles and Wearing Apparel |      5,103       14.29       85.71
+                              Transport |      5,103       14.29      100.00
+----------------------------------------+-----------------------------------
+                                  Total |     35,721      100.00
+
+
+
+*/
 
 *** Generate outcome variable ***
 gen ln_energy_cost_share = ln(energy_cost_share)
@@ -109,7 +172,7 @@ char CMonth[omit] 49
 global ytitle="Log Cost Energy rate"
 
 *Main regression
-xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar $productvar1) cluster($productvar2)
+xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar2)
 *xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar)
 
 **From here, just moving things around to generate an automatic graph
@@ -128,6 +191,9 @@ replace `x'=0 if time==-1
 keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
+
+graph export "${results}\eora\event-study-for-large-devaluations\05-scope1_country-industry(dirty_industry).pdf", as(pdf) replace
+
 
 *graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 
 

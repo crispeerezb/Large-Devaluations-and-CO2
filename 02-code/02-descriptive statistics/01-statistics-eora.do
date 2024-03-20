@@ -36,19 +36,33 @@ collapse (sum) scope_1_A grossoutput, by(country country_code year)
 gen rate_scope_1 = scope_1_A/grossoutput
 
 *** graph ***
-twoway (line rate_scope_1 year if country_code == "COL"), xline(2014) title("COLOMBIA")
-twoway (line rate_scope_1 year if country_code == "MEX"), xline(1995) title("MEXICO")
-twoway (line rate_scope_1 year if country_code == "RUS"), xline(1998) title("RUSSIA")
-twoway (line rate_scope_1 year if country_code == "FIN"), xline(1993) title("FINLAND")
-twoway (line rate_scope_1 year if country_code == "ISL"), xline(2014) title("ISLAND")
-twoway (line rate_scope_1 year if country_code == "MYS"), xline(1997) title("MALAYSIA")
-twoway (line rate_scope_1 year if country_code == "IDN"), xline(1998) title("INDONESIA")
-twoway (line rate_scope_1 year if country_code == "THA"), xline(1998) title("THAILAND")
-twoway (line rate_scope_1 year if country_code == "KOR"), xline(1998) title("KOREA")
-twoway (line rate_scope_1 year if country_code == "TUR"), xline(1994) title("TURKEY")
-twoway (line rate_scope_1 year if country_code == "TUR"), xline(2001) title("TURKEY")
-twoway (line rate_scope_1 year if country_code == "BRA"), xline(1999) title("BRASIL")
-twoway (line rate_scope_1 year if country_code == "IND"), xline(1991) title("INDIA")
+*keep if year >= 2010
+twoway (connected  rate_scope_1 year if country_code == "COL"), xline(2014) ytitle("CO2 Emissions") xtitle("Year") title("Colombia") name(COL, replace)
+
+twoway (connected rate_scope_1 year if country_code == "MEX"), xline(1995) ytitle("CO2 Emissions") xtitle("Year") title("Mexico") name(MEX, replace)
+
+twoway (connected rate_scope_1 year if country_code == "RUS"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Russia") name(RUS, replace)
+
+twoway (connected rate_scope_1 year if country_code == "FIN"), xline(1993) ytitle("CO2 Emissions") xtitle("Year") title("Findland") name(FIN, replace)
+
+twoway (connected rate_scope_1 year if country_code == "ISL"), xline(2014)  ytitle("CO2 Emissions") xtitle("Year")title("Island") name(ISL, replace)
+
+twoway (connected rate_scope_1 year if country_code == "MYS"), xline(1997) ytitle("CO2 Emissions") xtitle("Year") title("Malaysa") name(MYS, replace)
+
+twoway (connected rate_scope_1 year if country_code == "IDN"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Indonesia") name(IDN, replace)
+
+twoway (connected rate_scope_1 year if country_code == "THA"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Thailand") name(THA, replace)
+
+twoway (connected rate_scope_1 year if country_code == "KOR"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Korea") name(KOR, replace)
+
+twoway (connected rate_scope_1 year if country_code == "TUR"), xline(1994 2001) ytitle("CO2 Emissions") xtitle("Year") title("Turkey") name(TUR, replace)
+
+twoway (connected rate_scope_1 year if country_code == "BRA"), xline(1992 1999 2015) ytitle("CO2 Emissions") xtitle("Year") title("Brasil") name(BRA, replace)
+
+twoway (connected rate_scope_1 year if country_code == "IND"), xline(1991) title("India") ytitle("CO2 Emissions") xtitle("Year") name(IND, replace)
+
+* CO2 Emissions (Tons per $ of Gross Output)
+graph combine COL MEX RUS FIN ISL MYS IDN THA KOR TUR BRA IND
 
 
 

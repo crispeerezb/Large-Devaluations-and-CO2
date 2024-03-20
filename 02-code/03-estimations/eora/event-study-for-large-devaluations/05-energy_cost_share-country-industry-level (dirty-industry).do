@@ -38,12 +38,12 @@ merge 1:1 countryXindustry country country_code industry year using "${output}\d
 
 
 *** define clean and dirty industry ***
-preserve
-collapse (sum) grossoutput co2_scope1, by(industry)
-gen co2_scope1_rate = co2_scope1/grossoutput
-drop if industry == "Total"
-summarize co2_scope1_rate, detail
 
+egen gross_output_industry = total(grossoutput), by(industry)
+egen co2_scope1_industry = total(co2_scope1), by(industry)
+gen co2_scope1_rate_industry = co2_scope1_industry/gross_output_industry
+
+summarize co2_scope1_rate, detail
 /*
                        co2_scope1_rate
 -------------------------------------------------------------
@@ -62,7 +62,9 @@ summarize co2_scope1_rate, detail
 
 */
 
-restore
+local p25 `r(p25)'
+local p75 `r(p75)'
+
 
 egen co2_scope1_total_industry = total(co2_scope1), by(industry)
 egen grossoutput_total_industry = total(grossoutput), by(industry)
@@ -70,10 +72,10 @@ egen grossoutput_total_industry = total(grossoutput), by(industry)
 gen scope1_rate_aux = co2_scope1_total_industry/grossoutput_total_industry
 
 gen clean_industry = 0
-replace clean_industry = 1 if scope1_rate_aux <= 0.0248907
+replace clean_industry = 1 if scope1_rate_aux <= `p25'
 
 gen dirty_industry = 0
-replace dirty_industry = 1 if scope1_rate_aux >= 0.121782
+replace dirty_industry = 1 if scope1_rate_aux >= `p75'
 
 keep if dirty_industry == 1
 

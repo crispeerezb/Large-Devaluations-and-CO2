@@ -33,7 +33,7 @@ use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", c
 collapse (sum) scope_1_A grossoutput, by(country country_code year)
 
 *** gen rates variable ***
-gen rate_scope_1 = scope_1_A/grossoutput
+gen rate_scope_1 = (scope_1_A/grossoutput)
 
 *** graph ***
 *keep if year >= 2010
@@ -62,7 +62,10 @@ twoway (connected rate_scope_1 year if country_code == "BRA"), xline(1992 1999 2
 twoway (connected rate_scope_1 year if country_code == "IND"), xline(1991) title("India") ytitle("CO2 Emissions") xtitle("Year") name(IND, replace)
 
 * CO2 Emissions (Tons per $ of Gross Output)
+graph combine COL MEX RUS FIN ISL MYS IDN THA KOR TUR BRA IND, ycommon
+
 graph combine COL MEX RUS FIN ISL MYS IDN THA KOR TUR BRA IND
+
 
 
 

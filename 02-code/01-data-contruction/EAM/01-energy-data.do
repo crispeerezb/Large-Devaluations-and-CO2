@@ -67,7 +67,7 @@ foreach year of numlist `start_year'/`end_year' {
 	if (periodo == 2000 | periodo == 2001 | periodo == 2002 | periodo == 2003){
 	
 		* keep relevant variables 
-		keep nordemp nordest dpto periodo /// id variables
+		keep nordemp nordest dpto ciiu* periodo /// id variables
 		c5r1c1 c5r1c2 c5r1c3 c5r1c4 c3r19c3 totalv eelec /// energy variables
 		c3r30c3 c3r35c3 /// cost variables
 		prodbr2
@@ -95,7 +95,7 @@ foreach year of numlist `start_year'/`end_year' {
 	if (periodo == 2004 | periodo == 2005 | periodo == 2006){
 		
 		* keep relevant variables
-		keep nordemp nordest dpto periodo /// id variables
+		keep nordemp nordest dpto ciiu* periodo /// id variables
 		c5r1c1 c5r1c2 c5r1c3 c5r1c4 c3r19c3 totalv eelec /// energy variables
 		c3r10c3 c3r14c3 c3r41c3 c3r42c3 c3r27c3 c3r35c1 c3r35c3 c7c7r4 /// cost variables
 		prodbr2 /// gross output
@@ -122,7 +122,7 @@ foreach year of numlist `start_year'/`end_year' {
 	if (periodo == 2007){
 		
 		* keep relevant variables
-		keep nordemp nordest dpto periodo /// id variables
+		keep nordemp nordest dpto ciiu* periodo /// id variables
 		c5r1c1 c5r1c2 c5r1c3 c5r1c4 c3r19c3 totalv eelec /// energy variables
 		c3r10c3 c3r44c3 c3r40c3 c3r14c3 c3r41c3 c3r42c3 c3r27c3 c3r35c1 c3r35c3 c3r45c3 c7c7r4 /// cost variables
 		prodbr2 /// gross output
@@ -150,7 +150,7 @@ foreach year of numlist `start_year'/`end_year' {
 	if (periodo == 2008 | periodo == 2009 | periodo == 2010 | periodo == 2011 | periodo == 2012 | periodo == 2013 |periodo == 2014 | periodo == 2015 | periodo == 2016 | periodo == 2017 | periodo == 2018 | periodo == 2019){
 		
 		* keep relevant variables
-		keep nordemp nordest dpto periodo /// id variables
+		keep nordemp nordest dpto ciiu* periodo /// id variables
 		c5r1c1 c5r1c2 c5r1c3 c5r1c4 c3r19c3 totalv eelec /// energy variables
 		c3r10c3 c3r14c3 c3r41c3 c3r45c3 c3r42c3 c3r27c3 c3r35c1 c3r35c3 c7c7r4 /// cost variables
 		prodbr2 /// gross output
@@ -195,5 +195,36 @@ drop c7c7r4
 * some handfull changes
 rename periodo year
 
+* gen ciiu to have all of them in one variables
+gen ciiu_final = .
+replace ciiu_final = ciiu2 if missing(ciiu_final) & !missing(ciiu2)
+replace ciiu_final = ciiu if missing(ciiu_final) & !missing(ciiu)
+replace ciiu_final = ciiu3 if missing(ciiu_final) & !missing(ciiu3)
+replace ciiu_final = ciiu4 if missing(ciiu_final) & !missing(ciiu4)
+replace ciiu_final = ciiu_4 if missing(ciiu_final) & !missing(ciiu_4)
+
+drop ciiu ciiu3 ciiu4 ciiu_4 ciiu2
+
+rename ciiu_final ciiu
+
+order id_firm nordest dpto ciiu year
+
+* Finally, we extract only first two characters in ciiu
+tostring ciiu, gen(ciiu_string)
+gen ciiu_2 = substr(ciiu_string, 1, 2)
+
+replace ciiu_2 = "1" if ciiu == 13
+replace ciiu_2 = "1" if ciiu == 14
+replace ciiu_2 = "2" if ciiu == 20 
+replace ciiu_2 = "2" if ciiu == 22
+replace ciiu_2 = "2" if ciiu == 24
+replace ciiu_2 = "2" if ciiu == 26
+replace ciiu_2 = "2" if ciiu == 27
+replace ciiu_2 = "2" if ciiu == 28
+replace ciiu_2 = "2" if ciiu == 29
+replace ciiu_2 = "3" if ciiu == 31
+
+merge m:1 ciiu_2 using "${output}/data-stata/eam/00-eam_ciiu.dta", nogenerate keep(1 3)
+
 * We save data
-save "${output}/data-stata/eam/01-energy-data.dta"
+save "${output}/data-stata/eam/01-energy-data.dta", replace

@@ -38,5 +38,8 @@ inflation_annual <- inflation %>%
 inflation_annual <- inflation_annual %>%
   filter(year >= 1990)
 
+# new colnames
+colnames(inflation_annual) <- c("year", "inflation_rate_col")
+
 # save the data as dta
 write_dta(inflation_annual, file.path(dir_output, "data-stata/macro-indicators/03-inflation_annual_col.dta"))

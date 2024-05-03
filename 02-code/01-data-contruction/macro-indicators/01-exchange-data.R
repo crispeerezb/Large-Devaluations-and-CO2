@@ -4,6 +4,9 @@ library(readr)
 library(readxl)
 library(haven)
 
+# clear workspace
+rm(list = ls())
+
 # set path
 dir_base <- "C:/Users/crist/OneDrive/Documentos/GitHub/Large-Devaluations-and-CO2"
 dir_raw <- file.path(dir_base, "01-raw-data")
@@ -24,6 +27,9 @@ exchange_data <- exchange_data %>%
   mutate(year = as.numeric(format(date, "%Y"))) %>%
   group_by(year) %>%
   summarise(exchange_rate = mean(exchange_rate, na.rm = TRUE))
+
+# new colnames
+colnames(exchange_data) <- c("year", "exchange_rate_col_usd")
 
 # export as dta file
 write_dta(exchange_data, file.path(dir_output, "data-stata/macro-indicators/01-exchange_rate_col_usd.dta"))

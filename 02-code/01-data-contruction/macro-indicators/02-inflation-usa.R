@@ -29,5 +29,8 @@ inflation_annual <- inflation %>%
   group_by(year) %>% 
   summarise(inflation_rate = mean(inflation_rate, na.rm = TRUE))
 
+# new colnames
+colnames(inflation_annual) <- c("year", "inflation_rate_usa")
+
 # save the data in dta format
 write_dta(inflation_annual, file.path(dir_output, "data-stata/macro-indicators/02-inflation_annual_usa.dta"))

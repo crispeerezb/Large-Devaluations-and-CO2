@@ -9,6 +9,7 @@ library(writexl)
 library(tidyr)
 library(countrycode)
 library(foreign)
+library(maps)
 
 # options
 rm(list = ls())

@@ -38,6 +38,22 @@ merge 1:1 countryXindustry country country_code industry year using "${output}\d
 *** We collapse data to have data country-year level
 collapse (sum) co2_scope1 co2_scope2 grossoutput, by(country country_code year)
 
+* careful from here
+/*
+* option 1):
+egen mean_product = mean(grossoutput), by(country)
+drop grossoutput
+rename mean_product grossoutput
+
+* option 2):
+gen inicial_gross_output =.
+replace inicial_gross_output = grossoutput if year == 1990
+bysort country (year): replace inicial_gross_output = inicial_gross_output[_n-1] if inicial_gross_output == .
+drop grossoutput 
+rename inicial_gross_output grossoutput
+* to here
+*/
+
 *** gen scope 1 and 2 rates
 gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
 
@@ -111,8 +127,8 @@ char CMonth[omit] 49
 global ytitle="Log Scope 1 Emissions Rate"
 
 *Main regression
-*xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+*xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore

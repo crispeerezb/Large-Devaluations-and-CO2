@@ -1,0 +1,3 @@
+1.- Terminar los graficos y estimaciones con los datos del banco mundial
+2.- regresiones el producto contra las devaluaciones
+3.- explicar idea a Ezequiel en GitHub

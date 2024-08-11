@@ -84,8 +84,15 @@ gen gas_emission = emission_gas_natural + emission_gas_propano
 * 4) total emissions
 gen co2_emission_ton = emission_carbonmc + emission_carboncc + emission_carbonvc + emission_diesc + emission_fuelc + emission_gasolc + emission_kerosc + emission_petroc + emission_gas_natural + emission_gas_propano
 
+*collapse (sum) gas_emission
+
+*gen porc_carbon = carbon_emission/co2_emission_ton
+*gen porc_fuels = fossil_fuel_emission/co2_emission_ton
+*gen porc_gas = gas_emission/co2_emission_ton
+
+
 * data by firm and year
-collapse (sum) co2_emission_ton carbon_emission fossil_fuel_emission gas_emission gross_output valorven total_cost cost_energy industrial_output invebrta salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm year)
+collapse (sum) totalv co2_emission_ton carbon_emission fossil_fuel_emission gas_emission gross_output valorven total_cost cost_energy industrial_output invebrta salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm year)
 
 * keep only 2010 or more
 keep if year >= 2010
@@ -114,43 +121,77 @@ label variable ciiu "Industry"
 * We save data
 save "${dir_output}/data-stata/eam/08-EAM-2000-2019.dta", replace
 
-****************
-*** temporal ***
-****************
+*=======================================*
+****************************************
+*************** temporal ***************
+****************************************
+*======================================*
 
 * only see last year
-keep if year == 2019
+keep if year >= 2015
+
+* check emissions
+sum carbon_emission fossil_fuel_emission gas_emission
+
+
+/*
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+carbon_emi~n |      6,984    2.205889    41.62882          0   1623.867
+fossil_fue~n |      6,984    40.67228    437.7102          0   24614.43
+gas_emission |      6,984    665.7685     6186.73          0   177361.8
+
+*/
 
 * gen log variables to check correlation
+gen ln_totalv = log(totalv/gross_output)
 gen ln_emission_rate_output = log(co2_emission_ton/gross_output)
-gen ln_emission_rate_output_in = log(co2_emission_ton/industrial_output)
 gen ln_emission_rate_sales = log(co2_emission_ton/valorven)
 gen ln_cost_energy_rate = log(cost_energy/total_cost)
+gen ln_gross_output = log(gross_output)
+
+reg ln_totalv ln_gross_output
+
+areg ln_totalv ln_gross_output, a(ciiu)
+reghdfe ln_totalv ln_gross_output,a(ciiu )
+
 
 gen ln_emission_carbon_rate_output = log(carbon_emission/gross_output)
 gen ln_emission_ffuels_rate_output = log(fossil_fuel_emission/gross_output)
 
-gen ln_import = log(valorcx)
-gen ln_export = log(porcvt)
+* exports and imports variables
+gen ln_import = log((1+valorcx)/1)
+gen ln_export = log((1+porcvt)/1)
 
+* capital and labor variables
+gen ln_investment_rate = log(invebrta/total_cost)
+gen ln_labor_rate = log(salpeyte/total_cost)
+
+reghdfe ln_emission_rate_output ln_import ln_export ln_gross_output i.year, a(id_firm) cluster(id_firm)
+xxxx
 *== imports and exports correlation ==*
 
-* correlation log emission per gross_output 
-pwcorr ln_emission_rate_output ln_import
-pwcorr ln_emission_rate_output ln_export
 
+* correlation log emission per gross_output 
+pwcorr ln_emission_rate_output ln_import ln_export
 reg ln_emission_rate_output ln_import ln_export
+
+graph twoway (scatter ln_emission_rate_output ln_import) (lfit ln_emission_rate_output ln_import)
+
+graph twoway (scatter ln_emission_rate_output ln_export) (lfit ln_emission_rate_output ln_export)
+
+graph twoway (scatter ln_emission_ffuels_rate_output ln_import) (lfit ln_emission_ffuels_rate_output ln_export)
+
+graph twoway (scatter ln_emission_ffuels_rate_output ln_import) (lfit ln_emission_ffuels_rate_output ln_export)
+
 /*
-             | ln_emi.. ln_imp~t
--------------+------------------
+
+             | ln_emi.. ln_imp~t ln_exp~t
+-------------+---------------------------
 ln_emissio.. |   1.0000 
    ln_import |   0.0182   1.0000 
-
-
-             | ln_emi.. ln_exp~t
--------------+------------------
-ln_emissio.. |   1.0000 
-   ln_export |   0.0931   1.0000 
+   ln_export |   0.0931   0.5381   1.0000 
    
 
 ------------------------------------------------------------------------------
@@ -161,7 +202,7 @@ ln_emissio.. | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
        _cons |  -14.77987   .5601485   -26.39   0.000    -15.87909   -13.68066
 ------------------------------------------------------------------------------
 
-* Interesting negative relation beewtween ln_import and ln_emissions. It means that import firms are cleaner and exports firm dirtier? Which meke sense if we found that large devalution make emission increase CO2 intensity, since those events are a positive shock for exporter and a negative shock for importers.
+* Interesting negative relation beewtween ln_import and ln_emissions. It means that import firms are cleaner and exports firm dirtier? Which makes sense if we found that large devalution make emission increase CO2 intensity, since those events are a positive shock for exporter and a negative shock for importers.
 */
 
 
@@ -186,8 +227,7 @@ ln_emissio~n |   1.0000
 
 
 * correlation log fossil fuel emission per gross_output
-pwcorr ln_emission_ffuels_rate_output ln_import
-pwcorr ln_emission_ffuels_rate_output ln_export
+pwcorr ln_emission_ffuels_rate_output ln_import ln_export, sig
 
 reg ln_emission_ffuels_rate_output ln_import ln_export
 /*
@@ -212,4 +252,12 @@ l~ffuels_r~t | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
 ------------------------------------------------------------------------------
 */
 
+
+*== Investment and Labor correlation ==*
+
+reg ln_emission_rate_output ln_investment_rate ln_labor_rate
+
+graph twoway (scatter ln_emission_rate_output ln_investment_rate) (lfit ln_emission_rate_output ln_investment_rate)
+
+graph twoway (scatter ln_emission_rate_output ln_labor_rate) (lfit ln_emission_rate_output ln_labor_rate)
 

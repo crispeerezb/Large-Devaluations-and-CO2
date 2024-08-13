@@ -65,7 +65,7 @@ gen co2_scope1_rate = (co2_scope1/grossoutput)
 gen co2_scope2_rate = (co2_scope2/grossoutput) 
 gen co2_scope12_rate = (co2_scope12/grossoutput)
 
-* graph 
+* graph for emissions rates
 twoway (connected  co2_scope1_rate co2_scope2_rate year if country_code == "COL"), xline(2014) ytitle("CO2 Emissions") xtitle("Year") title("Colombia") name(COL, replace)
 
 twoway (connected co2_scope1_rate co2_scope2_rate year if country_code == "MEX"), xline(1995) ytitle("CO2 Emissions") xtitle("Year") title("Mexico") name(MEX, replace)
@@ -91,7 +91,6 @@ twoway (connected co2_scope1_rate co2_scope2_rate year if country_code == "TUR")
 twoway (connected co2_scope1_rate co2_scope2_rate year if country_code == "BRA"), xline(1992 1999 2015) ytitle("CO2 Emissions") xtitle("Year") title("Brasil") name(BRA, replace)
 
 twoway (connected co2_scope1_rate co2_scope2_rate year if country_code == "IND"), xline(1991) title("India") ytitle("CO2 Emissions") xtitle("Year") name(IND, replace)
-
 
 *************************
 *** Colombia Analysis ***
@@ -248,13 +247,11 @@ ytitle("CO2 Intensity")
 
 
 * =============================================================================*
-* =========================== check emissions =================================*
+* ============= Check what happend with gross output in events ================*
 * =============================================================================*
 
 * load data set 
 use "${output}\data-stata\eora\05-EORA-COUNTRY-INDUSTRY-1990-2016.dta", clear
-
-
 	   
 * collapse data set to get country level emissions
 gen co2_scope12 = co2_scope1 + co2_scope2
@@ -263,29 +260,29 @@ collapse co2_scope12 co2_scope1 co2_scope2 grossoutput, by(country country_code 
 * keep grossoutput in millon dollas
 replace grossoutput = grossoutput/1000
 
+* graph for grossoutput
+twoway (connected  grossoutput year if country_code == "COL"), xline(2014) ytitle("Gross Output") xtitle("Year") title("Colombia") name(COL, replace)
 
-**************************
-*** Indonesia Analysis ***
-**************************
+twoway (connected grossoutput year if country_code == "MEX"), xline(1995) ytitle("Gross Output") xtitle("Year") title("Mexico") name(MEX, replace)
 
-twoway (connected co2_scope1 year if country_code == "IDN"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Indonesia") name(IDN, replace)
+twoway (connected grossoutput year if country_code == "RUS"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Russia") name(RUS, replace)
+
+twoway (connected grossoutput year if country_code == "FIN"), xline(1993) ytitle("Gross Output") xtitle("Year") title("Findland") name(FIN, replace)
+
+twoway (connected grossoutput year if country_code == "ISL"), xline(2014)  ytitle("Gross Output") xtitle("Year")title("Island") name(ISL, replace)
+
+twoway (connected grossoutput year if country_code == "MYS"), xline(1997) ytitle("Gross Output") xtitle("Year") title("Malaysa") name(MYS, replace)
 
 twoway (connected grossoutput year if country_code == "IDN"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Indonesia") name(IDN, replace)
 
+twoway (connected grossoutput year if country_code == "JPN"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Japan") name(JPN, replace)
 
-*************************
-*** Thailand Analysis ***
-*************************
+twoway (connected grossoutput year if country_code == "THA"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Thailand") name(THA, replace)
 
-twoway (connected co2_scope1 year if country_code == "THA"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Thailand") name(IDN, replace)
+twoway (connected grossoutput year if country_code == "KOR"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Korea") name(KOR, replace)
 
-twoway (connected grossoutput year if country_code == "THA"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Thailand") name(IDN, replace)
+twoway (connected grossoutput year if country_code == "TUR"), xline(1994 2001) ytitle("Gross Output") xtitle("Year") title("Turkey") name(TUR, replace)
 
+twoway (connected grossoutput year if country_code == "BRA"), xline(1992 1999 2015) ytitle("Gross Output") xtitle("Year") title("Brasil") name(BRA, replace)
 
-***********************
-*** Turkey Analysis ***
-***********************
-
-twoway (connected co2_scope1 year if country_code == "TUR"), xline(1998) ytitle("CO2 Emissions") xtitle("Year") title("Turkey") name(IDN, replace)
-
-twoway (connected grossoutput year if country_code == "TUR"), xline(1998) ytitle("Gross Output") xtitle("Year") title("Turkey") name(IDN, replace)
+twoway (connected grossoutput year if country_code == "IND"), xline(1991) title("India") ytitle("Gross Output") xtitle("Year") name(IND, replace)

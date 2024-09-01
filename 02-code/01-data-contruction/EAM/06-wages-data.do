@@ -27,7 +27,7 @@ global output "${dir_base}\04-output"
 *                          wages data by firm level                *
 *==================================================================*
 
-local start_year = 2000
+local start_year = 2010
 local end_year = 2019
 
 foreach year of numlist `start_year'/`end_year' {
@@ -42,6 +42,7 @@ foreach year of numlist `start_year'/`end_year' {
 	* keep relevant variables 
 	keep nordemp nordest dpto ciiu* periodo /// id variables
 	salpeyte /// wages
+	c4r4c9t c4r4c10t /// employment
 	
 	* rename basic variables
 	rename nordemp id_firm
@@ -53,9 +54,9 @@ foreach year of numlist `start_year'/`end_year' {
 
 * Finally we append data
 cd "${dir_temp}/eam-wages"
-use wages-data_2000.dta, clear 
+use wages-data_2010.dta, clear 
 
-foreach year of numlist 2001/2019 {
+foreach year of numlist 2011/2019 {
     append using wages-data_`year'.dta
 }
 
@@ -65,17 +66,21 @@ rename periodo year
 
 * gen ciiu to have all of them in one variables
 gen ciiu_final = .
-replace ciiu_final = ciiu2 if missing(ciiu_final) & !missing(ciiu2)
-replace ciiu_final = ciiu if missing(ciiu_final) & !missing(ciiu)
+*replace ciiu_final = ciiu2 if missing(ciiu_final) & !missing(ciiu2)
+*replace ciiu_final = ciiu if missing(ciiu_final) & !missing(ciiu)
 replace ciiu_final = ciiu3 if missing(ciiu_final) & !missing(ciiu3)
 replace ciiu_final = ciiu4 if missing(ciiu_final) & !missing(ciiu4)
 replace ciiu_final = ciiu_4 if missing(ciiu_final) & !missing(ciiu_4)
 
-drop ciiu ciiu2 ciiu3 ciiu4 ciiu_4
+drop ciiu3 ciiu4 ciiu_4
 
 rename ciiu_final ciiu
 
 order id_firm nordest dpto ciiu year
+
+* generate employment variable: note those are man and women employes
+gen employment = c4r4c9t + c4r4c10t
+drop c4r4c9t c4r4c10t
 
 /* Finally, we extract only first two characters in ciiu
 tostring ciiu, gen(ciiu_string)

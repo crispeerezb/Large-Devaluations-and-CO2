@@ -34,75 +34,58 @@ global results "${dir_base}\05-results"
 use "${output}\data-stata\eora\02-co2-emissions-scope-1-country-industry.dta", clear
 merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\03-co2-emissions-scope-2-country-industry.dta"
 
-
-*** define clean and dirty industry ***
-preserve
-collapse (sum) grossoutput co2_scope1, by(industry)
-gen co2_scope1_rate = co2_scope1/grossoutput
-drop if industry == "Total"
-summarize co2_scope1_rate, detail
-
-/*
-                       co2_scope1_rate
--------------------------------------------------------------
-      Percentiles      Smallest
- 1%            0              0
- 5%     .0152596       .0152596
-10%     .0199556       .0199556       Obs                  26
-25%     .0248907       .0212821       Sum of wgt.          26
-
-50%     .0703486                      Mean           .2773015
-                        Largest       Std. dev.      .7824481
-75%      .121782       .2505798
-90%     .4387235       .4387235       Variance        .612225
-95%      1.17288        1.17288       Skewness       4.233195
-99%     3.942306       3.942306       Kurtosis       20.10261
-
-*/
-
-restore
-
-egen co2_scope1_total_industry = total(co2_scope1), by(industry)
-egen grossoutput_total_industry = total(grossoutput), by(industry)
-
-gen scope1_rate_aux = co2_scope1_total_industry/grossoutput_total_industry
-
-gen clean_industry = 0
-replace clean_industry = 1 if scope1_rate_aux <= 0.0248907
-
-gen dirty_industry = 0
-replace dirty_industry = 1 if scope1_rate_aux >= 0.121782
-
-keep if dirty_industry == 1
-
-/*
+*** keep variables needed ***
+keep countryXindustry country country_code industry year co2_scope1 co2_scope2
 
 
-                               industry |      Freq.     Percent        Cum.
-----------------------------------------+-----------------------------------
-             Electricity, Gas and Water |      5,103       14.29       14.29
-                         Metal Products |      5,103       14.29       28.57
-                   Mining and Quarrying |      5,103       14.29       42.86
-Petroleum, Chemical and Non-Metallic .. |      5,103       14.29       57.14
-                              Recycling |      5,103       14.29       71.43
-           Textiles and Wearing Apparel |      5,103       14.29       85.71
-                              Transport |      5,103       14.29      100.00
-----------------------------------------+-----------------------------------
-                                  Total |     35,721      100.00
+*** add grossoutput corrected ***
+merge 1:1 countryXindustry country country_code industry year using "${output}\data-stata\eora\06-gross_output_country-industry_v2.dta"
 
+keep if _merge==3
+drop _merge
+drop if grossoutput_local_current==.
 
-
-*/
+*** improve format ***
+rename grossoutput_local_current grossoutput
+gen co2_rates_scope1 = co2_scope1/grossoutput
+gen co2_rates_scope2 = co2_scope2/grossoutput
+gen co2_rates_scope12 = (co2_scope1+co2_scope2)/grossoutput
 
 * gen outcome variable *
 gen ln_co2_rates_scope1 = log(co2_rates_scope1)
+gen ln_co2_rates_scope2 = log(co2_rates_scope2)
+gen ln_co2_rates_scope12 = log(co2_rates_scope12)
+
+gen ln_co2_scope1 = log(co2_scope1)
+gen ln_co2_scope2 = log(co2_scope2)
+gen ln_co2_scope12 = log(co2_scope1 + co2_rates_scope2)
 
 *** Generate grossoutput variable lagged
 sort country year
 gen grossoutput_ly=grossoutput[_n-1] if country==country[_n-1] & year==year[_n-1]+1
 
-** Add data from penn table ***
+*** Add data from penn table ***
 merge m:1 country_code year using "${dir_base}\01-raw-data\penn_world_tables\pwt100_temp.dta", keep(3) nogen
+
+/*
+*** keep dirty industries ***
+keep if industry == "Electricity, Gas and Water" | ///
+         industry == "Metal Products" | ///
+         industry == "Mining and Quarrying" | ///
+         industry == "Petroleum, Chemical and Non-Metallic Mineral Products" | ///
+         industry == "Recycling" | ///
+         industry == "Textiles and Wearing Apparel" | ///
+         industry == "Transport"
+
+*/
+
+*** keep clean industries ***		 
+keep if industry == "Education, Health and Other Services" | ///
+         industry == "Financial Intermediation and Business Activities" | ///
+         industry == "Public Administration" | ///
+         industry == "Re-export & Re-import" | ///
+         industry == "Retail Trade" | ///
+         industry == "Wholesale Trade"
 
 
 /*-------------------------------------------------------*/
@@ -114,7 +97,7 @@ global eventvar="Event" /*Event variable*/
 *Event for real event, TFalse for False event.
 global monthsafter="4" /*Set Years after Devaluation*/
 global monthsbefore="4"/*Set Lags*/
-global outcome1="ln_co2_rates_scope1" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
+global outcome1="ln_co2_scope1" /*Set outcome ln_co2_scope1_rate or ln_co2_scope2_rate*/
 global timevar="year" 
 global productvar="countrycode"
 global productvar1 = "industry_code"
@@ -127,7 +110,7 @@ replace Event=1 if country_code=="ARG" & year==2002
 replace Event=1 if country_code=="MEX" & year==1995
 replace Event=1 if country_code=="RUS" & year==1998
 replace Event=1 if country_code=="FIN" & year==1993
-replace Event=1 if country_code=="ISL" & year==2008
+*replace Event=1 if country_code=="ISL" & year==2008
 replace Event=1 if country_code=="MYS" & year==1997
 replace Event=1 if country_code=="IDN" & year==1998
 replace Event=1 if country_code=="THA" & year==1998
@@ -136,7 +119,7 @@ replace Event=1 if country_code=="TUR" & year==1994
 replace Event=1 if country_code=="TUR" & year==2001
 replace Event=1 if country_code=="BRA" & year==1999
 replace Event=1 if country_code=="IND" & year==1991
-replace Event=1 if country_code=="COL" & year==2014
+*replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
 encode country, gen(countrycode)
@@ -171,8 +154,8 @@ char CMonth[omit] 49
 global ytitle="Log emissions scope 1 rate"
 
 *Main regression
-*xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
+xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+*xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar $productvar1) cluster($productvar2)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore
@@ -191,7 +174,7 @@ keep if estimate<1 & estimate>-1
 sort time
 twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct)) (rcap min95 max95 time , lcolor(gs10) ), xline(-1, lpattern(dash) lcolor(black)) yline(0) xtitle("Years since Large Devaluation") ytitle($ytitle) xlabel(-$monthsbefore(1)$monthsafter) legend(ring(0) position(8) order(1 "Point estimate" 2 "95% confidence interval"))
 
-graph export "${results}\eora\event-study-for-large-devaluations\06-scope1_country-industry (dirty_industry).pdf", as(pdf) replace
+*graph export "${results}\eora\event-study-for-large-devaluations\06-scope1_country-industry (dirty_industry).pdf", as(pdf) replace
 
 
 *graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono) 

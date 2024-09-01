@@ -42,7 +42,7 @@ gdp_deflator <- gdp_deflator %>%
   pivot_longer(cols = -c("Country Name", "Country Code"), names_to = "Year", values_to = "GDP_Deflator")
 
 # keep years from 1990 to 2019
-gdp_deflator <- gdp_deflator %>% filter(Year >= 1990 & Year <= 2016)
+gdp_deflator <- gdp_deflator %>% filter(Year >= 1990 & Year <= 2009)
 
 # change column names
 colnames(gdp_deflator) <- c("country", "country_code", "year", "gdp_deflator")
@@ -55,13 +55,10 @@ gdp_deflator$country_code <- as.character(gdp_deflator$country_code)
 # drop column country because it is in spanish
 gdp_deflator <- gdp_deflator %>% select(-c("country"))
 
-# proper format for variables, so year as string to merge later
-gdp_deflator$year <- as.character(gdp_deflator$year)
-
 # create a new variable for base gdp deflator
 gdp_deflator <- gdp_deflator %>%
   group_by(country_code) %>% 
-  mutate(base_gdp_deflator = gdp_deflator[year == 2016])
+  mutate(base_gdp_deflator = gdp_deflator[year == 2009])
 
 # create variable that will adjust gross output to current prices
 gdp_deflator <- gdp_deflator %>%

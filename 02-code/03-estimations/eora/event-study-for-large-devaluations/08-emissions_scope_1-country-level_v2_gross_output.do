@@ -62,8 +62,19 @@ rename inicial_gross_output grossoutput
 * to here
 */
 
+* keep till 2009
+keep if year <= 2009
+
 *** gen scope 1 and 2 rates
 gen ln_co2_scope1_rate = log(co2_scope1/grossoutput)
+gen ln_co2_scope2_rate = log(co2_scope2/grossoutput)
+gen ln_co2_scope12_rate = log((co2_scope1+co2_scope2)/grossoutput)
+gen ln_co2_scope1 = log(co2_scope1)
+gen ln_co2_scope2 = log(co2_scope2)
+gen ln_co2_scope12 = log(co2_scope1+co2_scope2)
+gen ln_gross_output = log(grossoutput)
+
+*drop if co2_scope1 == 0
 
 *** Generate grossoutput variable lagged
 sort country year
@@ -93,7 +104,7 @@ replace Event=1 if country_code=="ARG" & year==2002
 replace Event=1 if country_code=="MEX" & year==1995
 replace Event=1 if country_code=="RUS" & year==1998
 replace Event=1 if country_code=="FIN" & year==1993
-replace Event=1 if country_code=="ISL" & year==2008
+*replace Event=1 if country_code=="ISL" & year==2008
 replace Event=1 if country_code=="MYS" & year==1997
 replace Event=1 if country_code=="IDN" & year==1998
 replace Event=1 if country_code=="THA" & year==1998
@@ -102,7 +113,7 @@ replace Event=1 if country_code=="TUR" & year==1994
 replace Event=1 if country_code=="TUR" & year==2001
 replace Event=1 if country_code=="BRA" & year==1999
 replace Event=1 if country_code=="IND" & year==1991
-replace Event=1 if country_code=="COL" & year==2014
+*replace Event=1 if country_code=="COL" & year==2014
 
 * Set a code for each country.
 encode country,gen(countrycode)
@@ -135,8 +146,8 @@ char CMonth[omit] 49
 global ytitle="Log Scope 1 Emissions Rate"
 
 *Main regression
-*xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
-xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
+xi: reghdfe $outcome1 i.CMonth $controls, a($timevar $productvar) cluster($productvar)
+*xi: reghdfe $outcome1 i.CMonth , a($timevar $productvar) cluster($productvar)
 
 **From here, just moving things around to generate an automatic graph
 parmest,norestore
@@ -162,6 +173,6 @@ twoway (sc estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(
 
 *graph twoway (scatter estimate time, mcolor(orange) mlcolor(orange) lcolor(orange) connect(direct) yscale(r(0.2 -0.4))) (rcap min95 max95 time , lcolor(gs10)) 
 
-graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono)
+*graph display Graph, ysize(10) xsize(15) margin(tiny) scheme(s1mono)
 
 

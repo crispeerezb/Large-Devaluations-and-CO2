@@ -43,7 +43,7 @@ ppp_data <- ppp_data %>%
 ppp_data$ppp_rate <- ifelse(ppp_data$ppp_rate == "no data", NA, ppp_data$ppp_rate)
 
 # keep only the years 1990-2016
-ppp_data <- ppp_data %>% filter(Year >= 1990 & Year <= 2016)
+ppp_data <- ppp_data %>% filter(Year >= 1990 & Year <= 2009)
 
 # drop some strange countries manually
 ppp_data <- ppp_data %>% filter(country != "Belgium-Luxembourg")
@@ -119,9 +119,141 @@ ppp_data$country <- gsub(", Republic of" , "", ppp_data$country)
 
 ppp_data$country <- gsub("Congo the", "Congo", ppp_data$country)
 
+# other changes
+ppp_data$country <- gsub("Ethiopia Federal Dem. Rep. of", "Ethiopia", ppp_data$country)
+ppp_data$country <- gsub("United Arab Emirates", "Saudi Arabia", ppp_data$country)
+ppp_data$country <- gsub("North Macedonia", "TFYR Macedonia", ppp_data$country)
+ppp_data$country <- gsub("Antigua and Barbuda", "Antigua", ppp_data$country)
+ppp_data$country <- gsub("Cabo Verde", "Cape Verde", ppp_data$country)
+ppp_data$country <- gsub("Equatorial Guinea", "Guinea", ppp_data$country)
+ppp_data$country <- gsub("Eritrea State of", "Eritrea", ppp_data$country)
+ppp_data$country <- gsub("Kyrgyz Rep.", "Kyrgyzstan", ppp_data$country)
+ppp_data$country <- gsub("Czech Republicblic", "Czech Republic", ppp_data$country)
+ppp_data$country <- gsub("Central African Republicblic", "Central African Republic", ppp_data$country)
+ppp_data$country <- gsub("Dominican Republicblic", "Dominican Republic", ppp_data$country)
+ppp_data$country <- gsub("China, People's Republic of", "China", ppp_data$country)
+
+
+
 
 # add code 3 digits
 countries <- read_dta(file.path(dir_output, "data-stata/eora/00-countries.dta"))
+
+
+# we drop some countries that are not relevant in this analysis
+
+# Anguilla
+ppp_data <- ppp_data %>% filter(country != "Anguilla")
+
+# Comoros
+ppp_data <- ppp_data %>% filter(country != "Comoros")
+
+# Côte d'Ivoire
+ppp_data <- ppp_data %>% filter(country != "Côte d'Ivoire")
+
+# Curaçao and Sint Maarten
+ppp_data <- ppp_data %>% filter(country != "Curaçao and Sint Maarten")
+
+# Curaçao the Netherlands
+ppp_data <- ppp_data %>% filter(country != "Curaçao the Netherlands")
+
+# Dominica
+ppp_data <- ppp_data %>% filter(country != "Dominica")
+
+# Euro Area
+ppp_data <- ppp_data %>% filter(country != "Euro Area")
+
+# Eswatini
+ppp_data <- ppp_data %>% filter(country != "Eswatini")
+
+# USSR
+ppp_data <- ppp_data %>% filter(country != "USSR")
+
+# Yugoslavia
+ppp_data <- ppp_data %>% filter(country != "Yugoslavia")
+
+# Comoros
+ppp_data <- ppp_data %>% filter(country != "Comoros")
+
+# Faroe Islands
+ppp_data <- ppp_data %>% filter(country != "Faroe Islands")
+
+# Gibraltar
+ppp_data <- ppp_data %>% filter(country != "Gibraltar")
+
+# Grenada
+ppp_data <- ppp_data %>% filter(country != "Grenada")
+
+# Guadeloupe
+ppp_data <- ppp_data %>% filter(country != "Guadeloupe")
+
+# Guinea-Bissau
+ppp_data <- ppp_data %>% filter(country != "Guinea-Bissau")
+
+# Isle of Man
+ppp_data <- ppp_data %>% filter(country != "Isle of Man")
+
+# Jersey
+ppp_data <- ppp_data %>% filter(country != "Jersey")
+
+# Kiribati
+ppp_data <- ppp_data %>% filter(country != "Kiribati")
+
+# Kosovo
+ppp_data <- ppp_data %>% filter(country != "Kosovo")
+
+# Martinique
+ppp_data <- ppp_data %>% filter(country != "Martinique")
+
+# Micronesia
+ppp_data <- ppp_data %>% filter(country != "Micronesia")
+
+# Montserrat
+ppp_data <- ppp_data %>% filter(country != "Montserrat")
+
+# Nauru
+ppp_data <- ppp_data %>% filter(country != "Nauru")
+
+# Palau
+ppp_data <- ppp_data %>% filter(country != "Palau")
+
+# Reunion
+ppp_data <- ppp_data %>% filter(country != "Reunion")
+
+# Saint Pierre and Miquelon
+ppp_data <- ppp_data %>% filter(country != "Saint Pierre and Miquelon")
+
+# Sint Maarten the Netherlands
+ppp_data <- ppp_data %>% filter(country != "Sint Maarten the Netherlands")
+
+# Solomon Islands
+ppp_data <- ppp_data %>% filter(country != "Solomon Islands")
+
+# St. Kitts and Nevis
+ppp_data <- ppp_data %>% filter(country != "St. Kitts and Nevis")
+
+# St. Lucia
+ppp_data <- ppp_data %>% filter(country != "St. Lucia")
+
+# St. Vincent and the Grenadines
+ppp_data <- ppp_data %>% filter(country != "St. Vincent and the Grenadines")
+
+# Timor-Leste
+ppp_data <- ppp_data %>% filter(country != "Timor-Leste")
+
+# Tonga
+ppp_data <- ppp_data %>% filter(country != "Tonga")
+
+# Comoros, Union of the"
+ppp_data <- ppp_data %>% filter(country != "Comoros, Union of the")
+
+# Guernsey
+ppp_data <- ppp_data %>% filter(country != "Guernsey")
+
+# Guiana, French
+ppp_data <- ppp_data %>% filter(country != "Guiana, French")
+
+# left join
 ppp_data <- ppp_data %>% left_join(countries, by = "country")
 
 # check which countries did not match
@@ -134,6 +266,9 @@ colnames(ppp_data) <- c("country", "year", "ppp_rate", "country_code")
 # proper format for variables, so year as string to merge later
 ppp_data$year <- as.numeric(ppp_data$year)
 ppp_data$ppp_rate <- as.numeric(ppp_data$ppp_rate)
+
+# drop those observation that are in aux
+ppp_data <- ppp_data %>% filter(!country %in% aux)
 
 # save data in dta format
 write_dta(ppp_data, file.path(dir_output, "data-stata/imf/02-ppp-rate.dta"))

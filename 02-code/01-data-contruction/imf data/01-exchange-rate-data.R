@@ -164,10 +164,130 @@ colnames(exchange_rate) <- c("country", "year", "exchange_rate")
 exchange_rate$country <- gsub("Ethiopia Federal Dem. Rep. of", "Ethiopia", exchange_rate$country)
 exchange_rate$country <- gsub("United Arab Emirates", "Saudi Arabia", exchange_rate$country)
 exchange_rate$country <- gsub("North Macedonia", "TFYR Macedonia", exchange_rate$country)
+exchange_rate$country <- gsub("Antigua and Barbuda", "Antigua", exchange_rate$country)
+exchange_rate$country <- gsub("Cabo Verde", "Cape Verde", exchange_rate$country)
+exchange_rate$country <- gsub("Equatorial Guinea", "Guinea", exchange_rate$country)
+exchange_rate$country <- gsub("Eritrea State of", "Eritrea", exchange_rate$country)
+exchange_rate$country <- gsub("Kyrgyz Rep.", "Kyrgyzstan", exchange_rate$country)
 
 
 # add code 3 digits
 countries <- read_dta(file.path(dir_output, "data-stata/eora/00-countries.dta"))
+
+# we drop some countries that are not relevant in this analysis
+
+# Anguilla
+exchange_rate <- exchange_rate %>% filter(country != "Anguilla")
+
+# Comoros
+exchange_rate <- exchange_rate %>% filter(country != "Comoros")
+
+# Côte d'Ivoire
+exchange_rate <- exchange_rate %>% filter(country != "Côte d'Ivoire")
+
+# Curaçao and Sint Maarten
+exchange_rate <- exchange_rate %>% filter(country != "Curaçao and Sint Maarten")
+
+# Curaçao the Netherlands
+exchange_rate <- exchange_rate %>% filter(country != "Curaçao the Netherlands")
+
+# Dominica
+exchange_rate <- exchange_rate %>% filter(country != "Dominica")
+
+# Euro Area
+exchange_rate <- exchange_rate %>% filter(country != "Euro Area")
+
+# Eswatini
+exchange_rate <- exchange_rate %>% filter(country != "Eswatini")
+
+# USSR
+exchange_rate <- exchange_rate %>% filter(country != "USSR")
+
+# Yugoslavia
+exchange_rate <- exchange_rate %>% filter(country != "Yugoslavia")
+
+# Comoros
+exchange_rate <- exchange_rate %>% filter(country != "Comoros")
+
+# Faroe Islands
+exchange_rate <- exchange_rate %>% filter(country != "Faroe Islands")
+
+# Gibraltar
+exchange_rate <- exchange_rate %>% filter(country != "Gibraltar")
+
+# Grenada
+exchange_rate <- exchange_rate %>% filter(country != "Grenada")
+
+# Guadeloupe
+exchange_rate <- exchange_rate %>% filter(country != "Guadeloupe")
+
+# Guinea-Bissau
+exchange_rate <- exchange_rate %>% filter(country != "Guinea-Bissau")
+
+# Isle of Man
+exchange_rate <- exchange_rate %>% filter(country != "Isle of Man")
+
+# Jersey
+exchange_rate <- exchange_rate %>% filter(country != "Jersey")
+
+# Kiribati
+exchange_rate <- exchange_rate %>% filter(country != "Kiribati")
+
+# Kosovo
+exchange_rate <- exchange_rate %>% filter(country != "Kosovo")
+
+# Martinique
+exchange_rate <- exchange_rate %>% filter(country != "Martinique")
+
+# Micronesia
+exchange_rate <- exchange_rate %>% filter(country != "Micronesia")
+
+# Montserrat
+exchange_rate <- exchange_rate %>% filter(country != "Montserrat")
+
+# Nauru
+exchange_rate <- exchange_rate %>% filter(country != "Nauru")
+
+# Palau
+exchange_rate <- exchange_rate %>% filter(country != "Palau")
+
+# Reunion
+exchange_rate <- exchange_rate %>% filter(country != "Reunion")
+
+# Saint Pierre and Miquelon
+exchange_rate <- exchange_rate %>% filter(country != "Saint Pierre and Miquelon")
+
+# Sint Maarten the Netherlands
+exchange_rate <- exchange_rate %>% filter(country != "Sint Maarten the Netherlands")
+
+# Solomon Islands
+exchange_rate <- exchange_rate %>% filter(country != "Solomon Islands")
+
+# St. Kitts and Nevis
+exchange_rate <- exchange_rate %>% filter(country != "St. Kitts and Nevis")
+
+# St. Lucia
+exchange_rate <- exchange_rate %>% filter(country != "St. Lucia")
+
+# St. Vincent and the Grenadines
+exchange_rate <- exchange_rate %>% filter(country != "St. Vincent and the Grenadines")
+
+# Timor-Leste
+exchange_rate <- exchange_rate %>% filter(country != "Timor-Leste")
+
+# Tonga
+exchange_rate <- exchange_rate %>% filter(country != "Tonga")
+
+# Comoros, Union of the"
+exchange_rate <- exchange_rate %>% filter(country != "Comoros, Union of the")
+
+# Guernsey
+exchange_rate <- exchange_rate %>% filter(country != "Guernsey")
+
+# Guiana, French
+exchange_rate <- exchange_rate %>% filter(country != "Guiana, French")
+
+# left join
 exchange_rate <- exchange_rate %>% left_join(countries, by = "country")
 
 # check which countries did not match
@@ -176,7 +296,7 @@ aux <- unique(aux$country)
 aux
 
 # proper format for variables, so year as string to merge later
-#exchange_rate$year <- as.numeric(exchange_rate$year)
+# exchange_rate$year <- as.numeric(exchange_rate$year)
 
 # save data in dta format
 write_dta(exchange_rate, file.path(dir_output, "data-stata/imf/01-exchange-rate.dta"))

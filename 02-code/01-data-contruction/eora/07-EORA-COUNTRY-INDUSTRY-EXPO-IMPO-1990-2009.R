@@ -1,0 +1,86 @@
+# Load necessary packages
+library(readxl)
+library(dplyr)
+library(writexl)
+library(tidyr)
+library(ggplot2)
+library(haven)
+
+# Set general options
+rm(list = ls())  # Clear environment
+options(encoding = "UTF-8")  # Set UTF-8 encoding
+options(digits = 16)  # Display numbers with 16 digits
+
+# Set working directory based on user
+username <- "CP"
+
+if (username == "EZ") {
+  dir_base <- "change where you clone the repository"
+} else if (username == "CP") {
+  dir_base <- "C:/Users/crist/OneDrive/Documentos/GitHub/Large-Devaluations-and-CO2"
+}
+
+# Define paths for source, temporary, and output directories
+dir_source <- "C:/Users/crist/Dropbox Dropbox/Cristóbal Pérez Barraza/A-Large Devaluations and CO2/DataRaw/EORA"
+wd <- file.path(dir_base, "02-code")
+dir_temp <- file.path(dir_base, "03-temp")
+dir_output <- file.path(dir_base, "04-output")
+
+# Load countries-industries correspondence
+countries_industries <- read_dta("C:/Users/crist/OneDrive/Documentos/GitHub/Large-Devaluations-and-CO2/03-temp/countryXindustry_clean.dta")
+countries_industries <- countries_industries %>% filter(country_code != "ROW")
+
+# Initialize an empty list to store results for each year
+panel_data <- list()
+
+# Loop through each year from 1990 to 2009
+for (year in 1990:2016) {
+  
+  # Construct the file path for the current year
+  file_path <- file.path(dir_source, paste0("Eora26_", year, "_bp"), paste0("Eora26_", year, "_bp_T.txt"))
+  
+  # Load dataset (Input-Output table for the current year)
+  df <- read.table(file_path)
+  
+  # Assign column and row names (sequential numbers)
+  colnames(df) <- 1:ncol(df)
+  rownames(df) <- 1:nrow(df)
+  
+  # Remove the last row and column (discrepancies)
+  io_table <- df[-nrow(df), -ncol(df)]
+  
+  # Set a 26x26 diagonal to zero to exclude internal transactions for each country
+  num_industrias <- 26
+  for (i in seq(1, nrow(io_table), by = num_industrias)) {
+    diag_block <- io_table[i:(i+num_industrias-1), i:(i+num_industrias-1)]
+    io_table[i:(i+num_industrias-1), i:(i+num_industrias-1)] <- 0
+  }
+  
+  # Sum rows to calculate exports and sum columns to calculate imports
+  exportaciones <- rowSums(io_table)
+  importaciones <- colSums(io_table)
+  
+  # Create a data frame with countries, industries, exports, and imports for the current year
+  df_expo_impo <- data.frame(
+    countries = countries_industries$country,
+    country_code = countries_industries$country_code,
+    industry = countries_industries$industry,
+    countryXindustry = countries_industries$countryXindustry,
+    year = year,  # Set the current year
+    exports = exportaciones,
+    imports = importaciones
+  )
+  
+  # Append the result for the current year to the list
+  panel_data[[as.character(year)]] <- df_expo_impo
+}
+
+# Combine all the yearly data frames into a single data frame
+panel_data_df <- do.call(rbind, panel_data)
+
+# View the final panel data
+head(panel_data_df)
+
+# export as dta in the output folder
+write_dta(panel_data_df, file.path(dir_output, "data-stata", "eora", "08-EORA-COUNTRY-INDUSTRY-EXPO-IMPO-1990-2016.dta"))
+

@@ -55,14 +55,23 @@ gdp_deflator$country_code <- as.character(gdp_deflator$country_code)
 # drop column country because it is in spanish
 gdp_deflator <- gdp_deflator %>% select(-c("country"))
 
-# create a new variable for base gdp deflator
-gdp_deflator <- gdp_deflator %>%
-  group_by(country_code) %>% 
-  mutate(base_gdp_deflator = gdp_deflator[year == 2009])
+# drop if gdp_deflator is NA
+gdp_deflator <- gdp_deflator %>% filter(!is.na(gdp_deflator))
 
-# create variable that will adjust gross output to current prices
-gdp_deflator <- gdp_deflator %>%
-  mutate(gdp_deflator_adj =  base_gdp_deflator/gdp_deflator)
+# check if we have a balance panel, so we add a new column to check if we have all the years for each country
+gdp_deflator <- gdp_deflator %>% group_by(country_code) %>% mutate(n = n()) %>% ungroup()
+
+# check those countries with n<20
+aux <- gdp_deflator %>% filter(n < 20) %>% select(country_code, n) %>% distinct()
+countries_to_drop <- aux$country_code
+
+# drop countries with n<20
+gdp_deflator <- gdp_deflator %>% filter(!country_code %in% countries_to_drop)
+
+
+# drop column n
+gdp_deflator <- gdp_deflator %>% select(-c("n"))
+
 
 # save data as dta
 write_dta(gdp_deflator, file.path(dir_output, "/data-stata/world bank/02-gdp_deflator.dta"))

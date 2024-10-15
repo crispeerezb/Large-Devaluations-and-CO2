@@ -103,14 +103,93 @@ panel_data <- left_join(panel_data, df_sistemic_banking_crisis, by = c("Country"
   left_join(df_sovereign_debt_crisis, by = c("Country" = "Country", "Year" = "sovereign_debt_crisis")) %>%
   left_join(df_sovereign_debt_restructuring, by = c("Country" = "Country", "Year" = "sovereign_debt_restructuring"))
 
-# add country code
-panel_data$Country[panel_data$Country == "Yugoslavia, SFR"] <- "Yugoslavia"
+# drop if country is Yugoslavia
+panel_data <- panel_data %>%
+  filter(Country != "Yugoslavia, SFR")
+
+df_sistemic_banking_crisis <- df_sistemic_banking_crisis %>%
+  filter(Country != "Yugoslavia, SFR")
+
+df_currency_crisis <- df_currency_crisis %>%
+  filter(Country != "Yugoslavia, SFR")
+
+df_sovereign_debt_crisis <- df_sovereign_debt_crisis %>%
+  filter(Country != "Yugoslavia, SFR")
+
+df_sovereign_debt_restructuring <- df_sovereign_debt_restructuring %>%
+  filter(Country != "Yugoslavia, SFR")
+
+# add country code to the financial crisis data
 panel_data$country_code <- countrycode(panel_data$Country, origin = "country.name", destination = "iso3c")
+df_sistemic_banking_crisis$country_code <- countrycode(df_sistemic_banking_crisis$Country, origin = "country.name", destination = "iso3c")
+df_currency_crisis$country_code <- countrycode(df_currency_crisis$Country, origin = "country.name", destination = "iso3c")
+df_sovereign_debt_crisis$country_code <- countrycode(df_sovereign_debt_crisis$Country, origin = "country.name", destination = "iso3c")
+df_sovereign_debt_restructuring$country_code <- countrycode(df_sovereign_debt_restructuring$Country, origin = "country.name", destination = "iso3c")
+
+# rename the columns
+colnames(panel_data) <- c("country", "year", "sis_banking_crisis", "currency_crisis", "sovereign_debt_crisis", "sovereign_debt_restructuring", "country_code")
+colnames(df_sistemic_banking_crisis) <- c("country", "year", "sis_banking_crisis_event", "country_code")
+colnames(df_currency_crisis) <- c("country", "year", "currency_crisis_event", "country_code")
+colnames(df_sovereign_debt_crisis) <- c("country", "year", "sovereign_debt_crisis_event", "country_code")
+colnames(df_sovereign_debt_restructuring) <- c("country", "year", "sovereign_debt_restru_event", "country_code")
+
+# some manually changes
+df_currency_crisis <- rbind(df_currency_crisis, c("Myanmar", "2007", 1, "MMR"))
+df_currency_crisis$year <- gsub("2001,2007", "2001", df_currency_crisis$year)
+
+df_sovereign_debt_restructuring <- df_sovereign_debt_restructuring %>% filter(year != "n.a.")
+
+# as numeric year
+panel_data$year <- as.numeric(panel_data$year)
+df_sistemic_banking_crisis$year <- as.numeric(df_sistemic_banking_crisis$year)
+df_currency_crisis$year <- as.numeric(df_currency_crisis$year)
+df_sovereign_debt_crisis$year <- as.numeric(df_sovereign_debt_crisis$year)
+df_sovereign_debt_restructuring$year <- as.numeric(df_sovereign_debt_restructuring$year)
   
 # drop if country code is NA
 panel_data <- panel_data %>%
   filter(!is.na(country_code))
 
-# save the data in stata format to use in the main analysis
-write.dta(panel_data, file.path(dir_output, "data-stata/financial-crisis/financial-crisis_country-year.dta"))
+# keep data in all data sets only between 1995 and 2005
+panel_data <- panel_data %>%
+  filter(year >= 1995 & year <= 2005)
 
+df_sistemic_banking_crisis <- df_sistemic_banking_crisis %>%
+  filter(year >= 1995 & year <= 2005)
+
+df_currency_crisis <- df_currency_crisis %>%
+  filter(year >= 1995 & year <= 2005)
+
+df_sovereign_debt_crisis <- df_sovereign_debt_crisis %>%
+  filter(year >= 1995 & year <= 2005)
+
+# Finally we create a data set with all the financial crisis
+crisis_1 <- df_sistemic_banking_crisis
+colnames(crisis_1) <- c("country", "year", "crisis", "country_code")
+
+crisis_2 <- df_currency_crisis
+colnames(crisis_2) <- c("country", "year", "crisis", "country_code")
+
+crisis_3 <- df_sovereign_debt_crisis
+colnames(crisis_3) <- c("country", "year", "crisis", "country_code")
+
+crisis <- rbind(crisis_1, crisis_2, crisis_3)
+crisis_debt_and_sys_bank <- rbind(crisis_1, crisis_3)
+
+# drop duplicates
+crisis <- crisis %>%
+  distinct()
+
+crisis$crisis <- as.numeric(crisis$crisis)
+
+crisis_debt_and_sys_bank <- crisis_debt_and_sys_bank %>%
+  distinct()
+
+# save the data in stata format to use in the main analysis
+#write.dta(panel_data, file.path(dir_output, "data-stata/financial-crisis/financial-crisis_country-year.dta"))
+write.dta(df_sistemic_banking_crisis, file.path(dir_output, "data-stata/financial-crisis/sistemic_banking_crisis.dta"))
+write.dta(df_currency_crisis, file.path(dir_output, "data-stata/financial-crisis/currency_crisis.dta"))
+write.dta(df_sovereign_debt_crisis, file.path(dir_output, "data-stata/financial-crisis/sovereign_debt_crisis.dta"))
+#write.dta(df_sovereign_debt_restructuring, file.path(dir_output, "data-stata/financial-crisis/sovereign_debt_restructuring_crisis.dta"))
+write.dta(crisis, file.path(dir_output, "data-stata/financial-crisis/financial_crises.dta"))
+write.dta(crisis_debt_and_sys_bank, file.path(dir_output, "data-stata/financial-crisis/financial_crises_debt_and_sys_bank.dta"))

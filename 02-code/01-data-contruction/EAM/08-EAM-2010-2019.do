@@ -70,7 +70,7 @@ gen emission_gasolc = (gasolc*`factor_gasol')/1000
 gen emission_kerosc = (kerosc*`factor_kero')/1000
 gen emission_petroc = (petroc*`factor_petrol')/1000
 
-gen fossil_fuel_emission = emission_diesc + emission_fuelc + emission_gasolc + emission_kerosc + emission_petroc
+gen fuel_emission = emission_diesc + emission_fuelc + emission_gasolc + emission_kerosc + emission_petroc
 
 * 3) gas (in cubic meter and pound)
 local factor_gas_natural 1.93
@@ -82,17 +82,17 @@ gen emission_gas_propano = (gaspc*`factor_gas_propano')/1000
 gen gas_emission = emission_gas_natural + emission_gas_propano
 
 * 4) total emissions
-gen co2_emission_ton = carbon_emission + fossil_fuel_emission + gas_emission
+gen co2_emission_ton = carbon_emission + fuel_emission + gas_emission
 
 *collapse (sum) gas_emission
 
 *gen porc_carbon = carbon_emission/co2_emission_ton
-*gen porc_fuels = fossil_fuel_emission/co2_emission_ton
+*gen porc_fuels = fuel_emission/co2_emission_ton
 *gen porc_gas = gas_emission/co2_emission_ton
 
 
 * data by firm and year
-collapse (sum) totalv co2_emission_ton carbon_emission fossil_fuel_emission gas_emission gross_output valorven total_cost cost_energy energy_purchased_kwh industrial_output invebrta employment salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm year)
+collapse (sum) totalv co2_emission_ton carbon_emission fuel_emission gas_emission gross_output valorven total_cost cost_energy energy_purchased_kwh industrial_output invebrta employment salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm year)
 
 * keep only 2010 or more
 keep if year >= 2010
@@ -105,7 +105,7 @@ label variable id_firm "Firm ID"
 label variable year "Year"
 label variable co2_emission_ton "CO2 Emissions (Tons)"
 label variable carbon_emission "CO2 Emissions from Carbon (Tons)"
-label variable fossil_fuel_emission "CO2 Emissions from Fuel (Tons)"
+label variable fuel_emission "CO2 Emissions from Fuel (Tons)"
 label variable gas_emission "CO2 Emissions from Gas (Tons)"
 label variable gross_output "Gross Output (Pesos)"
 label variable valorven "Sales (Pesos)"
@@ -133,7 +133,7 @@ save "${dir_output}/data-stata/eam/08-EAM-2010-2019.dta", replace
 keep if year >= 2015
 
 * check emissions
-sum carbon_emission fossil_fuel_emission gas_emission
+sum carbon_emission fuel_emission gas_emission
 
 
 /*
@@ -160,7 +160,7 @@ reghdfe ln_totalv ln_gross_output,a(ciiu)
 
 
 gen ln_emission_carbon_rate_output = log(carbon_emission/gross_output)
-gen ln_emission_ffuels_rate_output = log(fossil_fuel_emission/gross_output)
+gen ln_emission_ffuels_rate_output = log(fuel_emission/gross_output)
 
 * exports and imports variables
 gen ln_import = log((1+valorcx)/1)

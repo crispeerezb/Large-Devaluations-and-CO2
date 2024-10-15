@@ -52,8 +52,13 @@ ppp_data <- ppp_data %>% filter(country != "Czechoslovakia")
 ppp_data <- ppp_data %>% filter(country != "Yemen, People's Dem. Rep. of")
 ppp_data <- ppp_data %>% filter(country != "Yemen Arab Rep.")
 ppp_data <- ppp_data %>% filter(country != "Netherlands Antilles")
+ppp_data <- ppp_data %>% filter(country != "Venezuela")
+ppp_data <- ppp_data %>% filter(country != "Angola")
 
 # Change names manually to later match with our main data set
+
+ppp_data$country <- gsub("Congo, Republic of", "Congo", ppp_data$country)
+ppp_data$country <- gsub("Congo, Dem. Rep. of the", "DR Congo", ppp_data$country)
 
 ppp_data$country <- gsub("Aruba the Netherlands", "Aruba", ppp_data$country)
 ppp_data$country <- gsub("Afghanistan, Islamic Rep. of", "Afghanistan", ppp_data$country)
@@ -117,15 +122,13 @@ ppp_data$country <- gsub(", The", "", ppp_data$country)
 ppp_data$country <- gsub(", Federated States of", "", ppp_data$country)
 ppp_data$country <- gsub(", Republic of" , "", ppp_data$country)
 
-ppp_data$country <- gsub("Congo the", "Congo", ppp_data$country)
-
 # other changes
 ppp_data$country <- gsub("Ethiopia Federal Dem. Rep. of", "Ethiopia", ppp_data$country)
-ppp_data$country <- gsub("United Arab Emirates", "Saudi Arabia", ppp_data$country)
+ppp_data$country <- gsub("United Arab Emirates", "UAE", ppp_data$country)
 ppp_data$country <- gsub("North Macedonia", "TFYR Macedonia", ppp_data$country)
 ppp_data$country <- gsub("Antigua and Barbuda", "Antigua", ppp_data$country)
 ppp_data$country <- gsub("Cabo Verde", "Cape Verde", ppp_data$country)
-ppp_data$country <- gsub("Equatorial Guinea", "Guinea", ppp_data$country)
+#ppp_data$country <- gsub("Equatorial Guinea", "Guinea", ppp_data$country)
 ppp_data$country <- gsub("Eritrea State of", "Eritrea", ppp_data$country)
 ppp_data$country <- gsub("Kyrgyz Rep.", "Kyrgyzstan", ppp_data$country)
 ppp_data$country <- gsub("Czech Republicblic", "Czech Republic", ppp_data$country)
@@ -144,6 +147,9 @@ countries <- read_dta(file.path(dir_output, "data-stata/eora/00-countries.dta"))
 
 # Anguilla
 ppp_data <- ppp_data %>% filter(country != "Anguilla")
+
+# Equatorial Guinea
+ppp_data <- ppp_data %>% filter(country != "Equatorial Guinea")
 
 # Comoros
 ppp_data <- ppp_data %>% filter(country != "Comoros")
@@ -269,6 +275,21 @@ ppp_data$ppp_rate <- as.numeric(ppp_data$ppp_rate)
 
 # drop those observation that are in aux
 ppp_data <- ppp_data %>% filter(!country %in% aux)
+
+# drop if ppp_rate is NA
+ppp_data <- ppp_data %>% filter(!is.na(ppp_rate))
+
+# check if we have a balance panel, so we add a new column to check if we have all the years for each country
+ppp_data <- ppp_data %>% group_by(country_code) %>% mutate(n = n()) %>% ungroup()
+
+# check those countries with n<20
+aux <- ppp_data %>% filter(n < 20) %>% select(country_code, country, n) %>% distinct()
+
+# drop those countries because they are going to unbalance the panel
+ppp_data <- ppp_data %>% filter(n >= 20)
+
+# drop column n
+ppp_data <- ppp_data %>% select(-c("n"))
 
 # save data in dta format
 write_dta(ppp_data, file.path(dir_output, "data-stata/imf/02-ppp-rate.dta"))

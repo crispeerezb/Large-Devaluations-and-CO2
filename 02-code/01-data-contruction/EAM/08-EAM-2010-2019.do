@@ -92,7 +92,7 @@ gen co2_emission_ton = carbon_emission + fuel_emission + gas_emission
 
 
 * data by firm and year
-collapse (sum) totalv co2_emission_ton carbon_emission fuel_emission gas_emission gross_output valorven total_cost cost_energy energy_purchased_kwh industrial_output invebrta employment salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm year)
+*collapse (sum) totalv co2_emission_ton carbon_emission fuel_emission gas_emission gross_output valorven total_cost cost_energy energy_purchased_kwh industrial_output invebrta employment salpeyte valorcx porcvt (max) ciiu exchange_rate_col_usd inflation_rate_usa inflation_rate_col, by(id_firm ciiu year)
 
 * keep only 2010 or more
 keep if year >= 2010

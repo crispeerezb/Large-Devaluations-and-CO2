@@ -42,6 +42,8 @@ df_eam <- df_eam %>%
     employment = sum(employment, na.rm = TRUE),
     energy_purchased_kwh = sum(energy_purchased_kwh, na.rm = TRUE),
     energy_generated_kwh = sum(energy_generated_kwh, na.rm = TRUE),
+    energy_consumed_kwh = sum(energy_consumed_kwh, na.rm = TRUE),
+    energy_sold_kwh = sum(energy_sold_kwh, na.rm = TRUE),
     carbon_emission = sum(carbon_emission, na.rm = TRUE),
     fuel_emission = sum(fuel_emission, na.rm = TRUE),
     gas_emission = sum(gas_emission, na.rm = TRUE),
@@ -86,10 +88,20 @@ industry_imports <- df_eam %>%
 industry_import_shocks <- industry_imports %>%
   arrange(ciiu, year) %>%
   group_by(ciiu) %>%
-  mutate(Z_jt = (total_imports - lag(total_imports)) / lag(total_imports)) %>%
+  mutate(Z_jt = log(total_imports+1) - log(lag(total_imports)+1)) %>%
   filter(!is.na(Z_jt)) # Remove the first year since it won't have a lag
 
+# Then also use production as another shock
+industry_production <- df_eam %>%
+  group_by(ciiu, year) %>%
+  summarise(total_production = sum(gross_output, na.rm = TRUE))
 
+# Calculate percentage change in production (production shock)
+industry_production_shocks <- industry_production %>%
+  arrange(ciiu, year) %>%
+  group_by(ciiu) %>%
+  mutate(S_jt = log(total_production+1) - log(lag(total_production)+1)) %>%
+  filter(!is.na(S_jt)) # Remove the first year since it won't have a lag
 
 #############################################
 # 1.3. Calculate the shift-share instrument #
@@ -103,13 +115,14 @@ firm_data_with_shares <- df_eam %>%
 firm_data_with_shocks <- firm_data_with_shares %>%
   left_join(industry_import_shocks, by = c("ciiu", "year"))
 
+# Merge the firm-level data with the industry-level production shocks
+firm_data_with_shocks <- firm_data_with_shocks %>%
+  left_join(industry_production_shocks, by = c("ciiu", "year"))
+
 # Construct the shift-share instrument for each firm
 firm_data_with_shocks <- firm_data_with_shocks %>%
-  mutate(shift_share_Z_it = s_ij * Z_jt)
-
-# View the final dataset with the shift-share instrument
-head(firm_data_with_shocks)
-
+  mutate(shift_share_Z_it = s_ij * Z_jt,
+         shift_share_S_it = s_ij * S_jt)
 
 # =============================================================== #
 # ================== 2. Shift-share estimation ================== #
@@ -120,12 +133,8 @@ head(firm_data_with_shocks)
 # 2.1 prepare data to estimate #
 ################################
 
-# Ensure there are no missing values in the variables of interest
-df_final <- firm_data_with_shocks %>%
-  filter(!is.na(co2_emission_ton) & !is.na(shift_share_Z_it))
-
 # agregate the data by id_firm and year
-df_final <- df_final %>%
+df_final <- firm_data_with_shocks %>%
   group_by(id_firm, year) %>%
   summarise(
     gross_output = sum(gross_output, na.rm = TRUE),
@@ -135,161 +144,73 @@ df_final <- df_final %>%
     valorven = sum(valorven, na.rm = TRUE),
     co2_emission_ton = sum(co2_emission_ton, na.rm = TRUE),
     shift_share_Z_it = sum(shift_share_Z_it, na.rm = TRUE),
+    shift_share_S_it = sum(shift_share_S_it, na.rm = TRUE),
     industrial_output = sum(industrial_output, na.rm = TRUE),
     employment = sum(employment, na.rm = TRUE),
     energy_purchased_kwh = sum(energy_purchased_kwh, na.rm = TRUE),
     energy_generated_kwh = sum(energy_generated_kwh, na.rm = TRUE),
+    energy_consumed_kwh = sum(energy_consumed_kwh, na.rm = TRUE),
+    energy_sold_kwh = sum(energy_sold_kwh, na.rm = TRUE),
     carbon_emission = sum(carbon_emission, na.rm = TRUE),
     fuel_emission = sum(fuel_emission, na.rm = TRUE),
     gas_emission = sum(gas_emission, na.rm = TRUE),
+    valorcx = sum(valorcx, na.rm = TRUE),
     .groups = 'drop' # Drop grouping afterwards
   )
 
-# drop those firms that have cero as gross output
-df_final <- df_final %>% filter(gross_output != 0)
+# to handle megative and zero values in invebrta, we use Hyperbolic Sine (IHS):
+df_final$ln_invebrta <- log(df_final$invebrta + sqrt(df_final$invebrta^2 + 1))
 
+# Calculate CO2 intensity in kg per unit of output (change)
+df_final$co2_emission <- df_final$co2_emission_ton * 1000
 
-# drop those firms that has cero in total_cost, invebrta, valorven, industrial_output
-#df_final <- df_final %>% filter(total_cost != 0, invebrta != 0, valorven != 0, industrial_output != 0)
-
-# balance panel, this is: conserve only firms that have data for all years
+# drop firms with zero gross output
 df_final <- df_final %>%
+  filter(gross_output != 0)
+
+
+# generate different versions of co2 intensity
+delta <- 1
+
+df_final <- df_final %>%
+  arrange(id_firm, year) %>%
+  mutate(
+    # version 1
+    ln_co2_intensity = log((co2_emission + delta) / (gross_output + delta)),
+    
+    # version 3
+    intensity_ratio = co2_emission / gross_output,
+    ln_co2_intensity_v2 = log(intensity_ratio + sqrt(intensity_ratio^2 + 1)),
+    
+    # version 4
+    ln_co2_intensity_v3 = log(co2_emission + delta) - log(gross_output + delta)
+  )
+
+# generate variation of co2 intensity
+df_final <- df_final %>%
+  arrange(id_firm, year) %>%
   group_by(id_firm) %>%
-  filter(n() == n_distinct(year)) %>%
+  mutate(
+    ln_co2_intensity_diff = ln_co2_intensity - lag(ln_co2_intensity),
+    ln_co2_emission_diff = log(co2_emission + delta) - log(lag(co2_emission) + delta),
+    ln_energy_purchased_kwh_diff = log(energy_purchased_kwh + delta) - log(lag(energy_purchased_kwh) + delta),
+    ln_energy_generated_kwh_diff = log(energy_generated_kwh + delta) - log(lag(energy_generated_kwh) + delta),
+    ln_energy_consumed_kwh_diff = log(energy_consumed_kwh + delta) - log(lag(energy_consumed_kwh) + delta),
+    ln_energy_sold_kwh_diff = log(energy_sold_kwh + delta) - log(lag(energy_sold_kwh) + delta),
+    ln_gross_output_diff = log(gross_output + delta) - log(lag(gross_output) + delta),
+    ln_labour_diff = log(employment + delta) - log(lag(employment) + delta),
+    ln_invebrta_diff = ln_invebrta - lag(ln_invebrta),
+    ln_total_cost_diff = log(total_cost + delta) - log(lag(total_cost) + delta),
+    ln_cost_energy_diff = log(cost_energy + delta) - log(lag(cost_energy) + delta)
+  ) %>%
   ungroup()
 
-# Calculate CO2 intensity in kg per unit of output
+# we balance panel and drop those firms that i can not follow over time
 df_final <- df_final %>%
-  mutate(co2_intensity = (co2_emission_ton*1000) / gross_output)
+  group_by(id_firm) %>%
+  filter(n() == 8) %>%
+  ungroup()
 
 
 # export data set to stata
 write_dta(df_final, "09-EAM-2012-2019-Shift-Share.dta")
-
-# # Log-transform CO2 intensity
-# df_final <- df_final %>%
-#   mutate(log_co2_intensity = log(co2_intensity + 1))  # Add 1 to avoid log(0) errors
-# 
-# # sort the data
-# df_final <- df_final %>%
-#   arrange(id_firm, year)
-# 
-# # note some other erros in the data: some firms have negative in sales, they are removed, since only 2 firms have this problem
-# df_final <- df_final %>% filter(valorven > 0)
-# 
-# 
-# 
-# # let's define variables in log and add a small number to avoid log(0)
-# df_final <- df_final %>%
-#   mutate(log_total_cost = log(total_cost + 0.00001),
-#          log_valorven = log(valorven + 0.00001),
-#          log_industrial_output = log(industrial_output + 0.00001)) # Add 1 to avoid log(0) errors
-# 
-# # note some other erros in the data: some firms have negative values in  invebrta, we change scale so minum is 0
-# df_final$log_invebrta <- log(df_final$invebrta - min(df_final$invebrta, na.rm = TRUE) + 1)
-# 
-# # note some other erros in the data: some firms have negative values in  shift_share_Z_it, we change scale so minum is 0
-# df_final$log_shift_share_Z_it <- log(df_final$shift_share_Z_it - min(df_final$shift_share_Z_it, na.rm = TRUE) + 1)
-# 
-# #########################################################
-# # 2.2. Estimate the model with different especificatios #
-# #########################################################
-# 
-# 
-# # version of the model for co2 intensity: all variables in levels
-# model_co2_intensity_levels <- feols(co2_intensity ~ shift_share_Z_it +
-#                                       industrial_output +
-#                                       employment + 
-#                                       invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_co2_intensity_levels, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-# 
-# 
-# # version of the model for energy purchased: all variables in levels
-# model_energy_puchased <- feols(energy_purchased_kwh ~ shift_share_Z_it +
-#                                 industrial_output +
-#                                 employment + 
-#                                 invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_energy_puchased, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-# 
-# # emission
-# model_emissions_co2 <- feols(co2_emission_ton ~ shift_share_Z_it +
-#                               industrial_output +
-#                               employment + 
-#                               invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_emissions_co2, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-# 
-# # fuel emission
-# model_fuel_emissions <- feols(fuel_emission ~ shift_share_Z_it +
-#                               industrial_output +
-#                               employment + 
-#                               invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_fuel_emissions, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-# 
-# # gas emission
-# model_gas_emissions <- feols(gas_emission ~ shift_share_Z_it +
-#                               industrial_output +
-#                               employment + 
-#                               invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_gas_emissions, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-# 
-# 
-# # carbon emission
-# model_carbon_emissions <- feols(carbon_emission ~ shift_share_Z_it +
-#                                 industrial_output +
-#                                 employment + 
-#                                 invebrta| id_firm + year, data = df_final)
-# 
-# etable(model_carbon_emissions, 
-#        cluster = "id_firm",
-#        digits = 3,
-#        fitstat = c("r2", "n"),
-#        style.tex = TRUE, 
-#        title = "Carbon Emissions",
-#        se = "cluster")
-
-
-
-
-
-
-
-
-
-
-
-

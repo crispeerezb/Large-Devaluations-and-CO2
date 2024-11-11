@@ -80,6 +80,7 @@ foreach year of numlist `start_year'/`end_year' {
 	* rename energy variables
 	rename c5r1c1 energy_purchased_kwh
 	rename c5r1c2 energy_generated_kwh
+	*rename c5r1c7 energy_co_generated_kwh
 	rename c5r1c3 energy_sold_kwh
 	rename c5r1c4 energy_consumed_kwh
 	rename c3r19c3 cost_energy

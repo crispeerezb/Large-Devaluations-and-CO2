@@ -1,0 +1,24 @@
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{l*{4}{c}}
+\hline\hline
+                &\multicolumn{1}{c}{(1)}         &\multicolumn{1}{c}{(2)}         &\multicolumn{1}{c}{(3)}         &\multicolumn{1}{c}{(4)}         \\
+\hline
+ln\_gross\_output\_diff&    0.859\sym{***}&    0.588\sym{*}  &    0.605\sym{*}  &    0.576         \\
+                &  (0.175)         &  (0.308)         &  (0.316)         &  (0.383)         \\
+[1em]
+ln\_labour\_diff  &                  &    0.537\sym{*}  &    0.511\sym{*}  &    0.477\sym{**} \\
+                &                  &  (0.286)         &  (0.291)         &  (0.213)         \\
+[1em]
+ln\_invebrta\_diff&                  &                  &    0.001         &    0.001         \\
+                &                  &                  &  (0.001)         &  (0.001)         \\
+[1em]
+ln\_total\_cost\_diff&                  &                  &                  &    0.062         \\
+                &                  &                  &                  &  (0.149)         \\
+\hline
+Observations    &    43183         &    43183         &    43176         &    43176         \\
+\hline\hline
+\multicolumn{5}{l}{\footnotesize Standard errors in parentheses}\\
+\multicolumn{5}{l}{\footnotesize \sym{*} \(p<0.10\), \sym{**} \(p<0.05\), \sym{***} \(p<0.01\)}\\
+\end{tabular}
+}

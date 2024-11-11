@@ -39,24 +39,11 @@ global results "${dir_base}\05-results\eam\regressions"
 * load data set
 use "${output}\data-stata\eam\09-EAM-2012-2019-Shift-Share", clear
 
-* set global for program
-global outcome1="co2_intensity"
-global outcome2="co2_emission"
-global outcome3="energy_purchased_kwh"
-global outcome4="energy_generated_kwh"
-global outcome5= "labor"
-global outcome6="invebrta"
-global outcome7="cost_energy"
-global timevar="year" 
-global productvar="id_firm_code"
-global controls1="gross_output labor invebrta" /*If want to add controls*/
-global controls2="valorven labor invebrta"
-
 * set a code for firms
 encode id_firm, gen(id_firm_code)
 
 * gen co2 emission in kg
-gen co2_emission = co2_emission_ton*1000
+*gen co2_emission = co2_emission_ton*1000
 
 * add labels
 label variable id_firm "Firm ID"
@@ -74,52 +61,244 @@ label variable energy_purchased_kwh "Energy Purchased (kWh)"
 label variable industrial_output "Gross Output (Industrial)"
 label variable invebrta "Gross Investment (Pesos)"
 
-
 * rename employment variable by labor (it is more occurate)
 rename employment labor
 label variable labor "Workforce"
 
-/*----------------------------------------------------*/
-/*-----------------------ESTIMATION-------------------*/
-/*----------------------------------------------------*/
+* gen variables in log
+gen ln_co2_emission = log(co2_emission+1)
+gen ln_energy_purchased_kwh = log(energy_purchased_kwh+1)
+gen ln_energy_generated_kwh = log(energy_generated_kwh+1)
+gen ln_labor = log(labor+1)
+*gen ln_invebrta = log(invebrta+1)
+gen ln_cost_energy = log(cost_energy+1)
+gen ln_energy_consumed_kwh = log(energy_consumed_kwh+1)
+gen ln_energy_sold_kwh = log(energy_sold_kwh+1)
+gen ln_gross_output = log(gross_output+1)
+gen ln_valorven = log(valorven+1)
+gen ln_import = log(valorcx+1)
+gen ln_total_cost = log(total_cost+1)
+
+* outcomes in levels
+global outcome1="co2_intensity"
+global outcome2="co2_emission"
+global outcome3="energy_purchased_kwh"
+global outcome4="energy_generated_kwh"
+global outcome5= "labor"
+global outcome6="invebrta"
+global outcome7="cost_energy"
+global outcome8="energy_consumed_kwh"
+global outcome9="energy_sold_kwh"
+
+* outcomes in log and diff
+global ln_outcome_diff_1="ln_co2_intensity_diff"
+global ln_outcome_diff_2="ln_co2_emission_diff"
+global ln_outcome_diff_3="ln_energy_purchased_kwh_diff"
+global ln_outcome_diff_4="ln_energy_generated_kwh_diff"
+global ln_outcome_diff_5="ln_energy_consumed_kwh_diff"
+global ln_outcome_diff_6="ln_energy_sold_kwh_diff"
+
+* outcomes in log
+global ln_outcome1="ln_co2_intensity"
+global ln_outcome2="ln_co2_emission"
+global ln_outcome3="ln_energy_purchased_kwh"
+global ln_outcome4="ln_energy_generated_kwh"
+global ln_outcome5="ln_energy_consumed_kwh"
+global ln_outcome6="ln_energy_sold_kwh"
+
+
+* fixed effects
+global timevar="year" 
+global productvar="id_firm_code"
+
+* controls
+global controls1="ln_labour_diff"
+global controls2="ln_labour_diff ln_invebrta_diff"
+global controls3="ln_labour_diff ln_invebrta_diff ln_total_cost_diff"
+global controls4="ln_labour_diff ln_invebrta_diff ln_cost_energy_diff"
+
+/*------------------------------------------------------------------------------------*/
+/*---------------------ESTIMATION USING GROSS OUTPUT FOR SHIFT-SHARE------------------*/
+/*------------------------------------------------------------------------------------*/
 
 * ====================================================== *
 * 1.- Let's see what happend with energies and emissions *
 * ====================================================== *
 
+*****************************************************
+* NOTE: here all dep. variables are in log and diff *
+*****************************************************
+
+*\---- ln_co2_intensity ----\*
+
+* OLS
 eststo drop *
 
-* co2_intensity
-*xi: reghdfe $outcome1 shift_share_Z_it $controls2, a($timevar $productvar) cluster($productvar)
+eststo: reghdfe $ln_outcome_diff_1 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
 
-* co2_emission (kg)
-eststo m11: reghdfe $outcome2 shift_share_Z_it $controls1, a($timevar $productvar) cluster($productvar)
+eststo: reghdfe $ln_outcome_diff_1 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
 
-* energy_purchased_kwh
-eststo m12: reghdfe $outcome3 shift_share_Z_it $controls1, a($timevar $productvar) cluster($productvar)
+eststo: reghdfe $ln_outcome_diff_1 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
 
-* energy_generated_kwh
-eststo m13: reghdfe $outcome4 shift_share_Z_it $controls1, a($timevar $productvar) cluster($productvar)
+eststo: reghdfe $ln_outcome_diff_1 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
 
-* energy cost
-eststo m14: reghdfe $outcome7 shift_share_Z_it $controls1, a($timevar $productvar) cluster($productvar)
+esttab using "${results}\CO2-Intensity-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
 
-* save table
-esttab m11 m12 m13 m14 using "${results}\energy_and_emissions.tex", b(3) r2(3) ar2(3) se(3) depvars label compress star(* 0.10 ** 0.05 *** 0.01) replace
 
-* ================================================= *
-* 2.- Let's see what happend with production factor *
-* ================================================= *
-
+* IV
 eststo drop *
 
-* labor
-eststo m21: reghdfe $outcome5 shift_share_Z_it gross_output, a($timevar $productvar) cluster($productvar)
+eststo: ivreghdfe $ln_outcome_diff_1 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
 
-* invebrta 
-eststo m22: reghdfe $outcome6 shift_share_Z_it gross_output, a($timevar $productvar) cluster($productvar)
+eststo: ivreghdfe $ln_outcome_diff_1 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
 
-* save table
-esttab m21 m22 using "${results}\factors.tex", b(3) r2(3) ar2(3) se(3) depvars label compress star(* 0.10 ** 0.05 *** 0.01) replace
+eststo: ivreghdfe $ln_outcome_diff_1 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
 
+eststo: ivreghdfe $ln_outcome_diff_1 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\CO2-Intensity-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+*\---- ln_co2_emission (kg) ----\*
+
+* OLS
+eststo drop *
+
+eststo: reghdfe $ln_outcome_diff_2 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_2 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_2 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_2 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\CO2-Emissions-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+* IV
+eststo drop *
+
+eststo: ivreghdfe $ln_outcome_diff_2 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_2 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_2 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_2 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\CO2-Emissions-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+
+*\---- ln_energy_purchased_kwh ----\*
+
+* OLS
+eststo drop *
+
+eststo: reghdfe $ln_outcome_diff_3 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_3 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_3 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_3 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Purchased-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+* IV
+eststo drop *
+
+eststo: ivreghdfe $ln_outcome_diff_3 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_3 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_3 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_3 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Purchased-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+
+*\---- ln_energy_generated_kwh ----\*
+
+* OLS
+eststo drop *
+
+eststo: reghdfe $ln_outcome_diff_4 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_4 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_4 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_4 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Generated-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+* IV
+eststo drop *
+
+eststo: ivreghdfe $ln_outcome_diff_4 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_4 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_4 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_4 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Generated-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+
+*\---- ln_energy_consumed_kwh ----\*
+
+* OLS
+eststo drop *
+
+eststo: reghdfe $ln_outcome_diff_5 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_5 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_5 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_5 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Consumed-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+* IV
+eststo drop *
+
+eststo: ivreghdfe $ln_outcome_diff_5 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_5 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_5 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_5 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Consumed-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+
+*\---- ln_energy_sold_kwh ----\*
+
+* OLS
+eststo drop *
+
+eststo: reghdfe $ln_outcome_diff_6 ln_gross_output_diff, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_6 ln_gross_output_diff $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_6 ln_gross_output_diff $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: reghdfe $ln_outcome_diff_6 ln_gross_output_diff $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Sold-OLS.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
+
+* IV
+eststo drop *
+
+eststo: ivreghdfe $ln_outcome_diff_6 (ln_gross_output_diff = shift_share_S_it), a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_6 (ln_gross_output_diff = shift_share_S_it) $controls1, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_6 (ln_gross_output_diff = shift_share_S_it) $controls2, a($timevar $productvar) cluster($productvar)
+
+eststo: ivreghdfe $ln_outcome_diff_6 (ln_gross_output_diff = shift_share_S_it) $controls3, a($timevar $productvar) cluster($productvar)
+
+esttab using "${results}\Energy-Sold-IV.tex", b(3) se(3) compress nodepvars nomtitles label star(* 0.10 ** 0.05 *** 0.01) replace
 
